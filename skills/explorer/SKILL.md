@@ -27,27 +27,77 @@ quoting the whole file.
 
 ## The procedure
 
-Order matters. Steps 2 and 4 are deliberately not adjacent.
+Order matters. Steps 2 to 4 come before any depth-first reading, and steps 5 and 7 are
+deliberately not adjacent.
 
 1. **Pin the sources, then run `explorer pin`.** For each repo, find the ref that holds the
    work: `git log --oneline master..<branch>` maps branches to tickets, and
    `git worktree list` finds a stacked branch checked out elsewhere. Write the front matter,
    then pin it **before** you read anything. A branch name is not a pin — see Drift.
-2. **Read the code, not the diffs.** Diffs show what moved; they hide what the moved code
+
+2. **Find the fork point, and diff against that — never against the base branch.**
+
+   ```sh
+   fork=$(git merge-base <base> <sha>)
+   ```
+
+   `git diff master..<sha>` is not the changeset. `master` has moved since the branch left
+   it, and every commit it gained comes back inverted: master's additions read as this
+   changeset's deletions. On a real subject that turned a 37-line addition into "37 added,
+   452 deleted" and produced a confident, entirely false finding about unrelated code being
+   removed. `base:` names a branch, and a branch is not a point — the same lesson as Drift,
+   one commit earlier in the history.
+
+3. **Account for every changed path.** `git diff --stat $fork..<sha>`. Group the paths by
+   directory and give each group a reason for being in this changeset. Most sit in the
+   feature's own directories and need no more than that.
+
+   **A path outside them is a finding until you have opened it and decided otherwise.** A
+   global stylesheet, a shared registry, a base class, a config file: something crossed out
+   of the feature to reach it, and that is the change least likely to be reviewed and most
+   likely to affect code nobody in the review is thinking about. Rank it before you know
+   what it is, then open it — and let it be ordinary if it is ordinary. The instruction is to
+   look, not to come back with something.
+
+4. **Reconcile the commit list against the file list.** A commit can be in the branch while
+   its content is not at the tip — a merge from the base takes the other side and the change
+   is gone, with nothing anywhere saying so.
+
+   ```sh
+   comm -23 <(git log --name-only --pretty=format: $fork..<sha> | sed '/^$/d' | sort -u) \
+            <(git diff --name-only $fork..<sha> | sort -u)
+   ```
+
+   Both sides must use the same `$fork..<sha>` range or the comparison is meaningless.
+
+   Every path it prints was touched and then undone. Pair each one off against a rename or a
+   renumber you can see in the diff. **A path with no such pair is a change that was lost** —
+   open the commit, find out what it did, and report it. A fix that a merge quietly reverted
+   is in the commit list and absent from the files-changed view, so neither review surface
+   contradicts the other.
+
+   **State the result in the document, including when it is empty.** "Three paths were
+   touched and undone, all renames" is a sentence a reader can audit. Silence is
+   indistinguishable from not having run it.
+
+5. **Read the code, not the diffs.** Diffs show what moved; they hide what the moved code
    now does. Open the files.
-3. **Read the test names, not the test bodies.**
+6. **Read the test names, not the test bodies.**
    `git show <sha>:<file> | grep -nE "^[[:space:]]*(it|test|def test)"`. The names are a
    written record of what the author believed mattered, and the gaps between them are usually
    the better finding. (`git grep -E` does not understand `\s`; use `[[:space:]]`.)
-4. **Read the PR prose last.** It is claimed intent, not evidence. Reading it first tells you
+7. **Read the PR prose last.** It is claimed intent, not evidence. Reading it first tells you
    what to see. Reading it last lets you notice where it and the code disagree — which is
    often the most valuable sentence in the document.
-5. **Hunt absences on purpose.** The strongest findings are things that are *not* there: no
+8. **Hunt absences on purpose.** The strongest findings are things that are *not* there: no
    analytics call, no test for a path, no reader of a flag. Absence cannot be cited, so it
    must be searched for — and the search stated. See Claiming an absence.
-6. **Draft against the budget**, in the shape below.
-7. **`explorer check <doc.md>`** until it exits 0, then **read the whole thing cold.** If you
-   would not send it to a colleague, it is not done.
+9. **Draft against the budget**, in the shape below.
+10. **`explorer check <doc.md>`** until it exits 0, then **check your own captions**, then
+    **read the whole thing cold.** `check` proves the code is real and says nothing about the
+    sentence beside it. A count you quote from a diff — lines added, lines removed, files
+    touched — is a claim; re-run the command before you ship it. If you would not send it to
+    a colleague, it is not done.
 
 ## What the document is
 
@@ -61,11 +111,24 @@ in it.
 3. **What to read.** For a changeset: `core` files with a one-line reason each, and the rest
    named as a group. For a subsystem: the files *and the symbols inside them* that carry the
    behaviour. Write each path as `` `<source-id> <path>` `` — the tool resolves and links it.
-4. **The findings**, most important first, each one earning its place with a citation.
-5. **What the tests cover, and what they do not.** Name the specific untested scenarios.
-6. **What follows the existing pattern.** One sentence and one citation for the whole
+
+   Putting a file in the support group is a claim that you opened it and it was ordinary.
+   It is not a bin for the files you did not read.
+4. **The design already on record.** A compressed account of the decisions the author
+   documented — in comments, docstrings, the PR body, a shipped runbook — attributed to
+   where they are written, and cited. This is real value: it is the abstract of the
+   changeset, and it tells a reader what to hold in mind before they open a file.
+
+   It is not a findings section. Say where each point comes from, so its weight is legible:
+   *the docstring names the race it closes*, not a bare assertion in your own voice.
+5. **The findings**: what the record does not state. Most important first, each one earning
+   its place with a citation. A point already made in a comment belongs in part 4; the
+   author's annotations map what they knew, and your value is what the map omits.
+6. **What the tests cover, and what they do not.** Name the specific untested scenarios.
+7. **What follows the existing pattern.** One sentence and one citation for the whole
    category. Anything conventional gets named and dismissed, not toured.
-7. **What you could not determine.** Brief, specific, and honest about what would settle it.
+8. **What you could not determine.** Brief, specific, and honest about what would settle it.
+   Not a parking space for a question one more file would answer.
 
 **Order the whole document by importance, and let it taper** — journalism's inverted pyramid.
 When you need to cut, cut from the bottom.
@@ -88,6 +151,13 @@ When you need to cut, cut from the bottom.
   which to use and what the split costs. Do not stage a decision the reader does not have.
 - **Captions carry the contrast.** A citation shows what the code is; the caption says what it
   was, or what it is not. "Previously `borderWidth: 1`, for every variant at every size."
+- **A caption is the one thing the tool cannot check.** `check` proves the bytes; the sentence
+  beside them is yours. So a caption that asserts an order, a cause, or a mechanism gets read
+  back against the lines it sits beside, every time. "Runs before the flag check" is a claim
+  about two line numbers, and getting it backwards spends a reader's trust on nothing.
+- **Attribute what was already written down.** Compressing the author's own comments is
+  useful work — it is the abstract of the changeset. Passing it off as discovered is not.
+  Findings are what the annotations omit.
 
 ## Drift
 
@@ -121,6 +191,13 @@ three PRs add." A reader can audit that sentence. "The feature has no analytics"
 Two absence claims in the first two documents were wrong on the first attempt, and both were
 caught by searching rather than re-reading.
 
+**Then resolve what the absence costs.** An absence is half a finding: the other half is the
+code that consumes what is missing. "The event is not in `EventMap.ts`" is where the search
+ends and the finding starts — open the tracker, find the branch that decides whether an
+unregistered name is sent, and report the consequence. One more file usually turns *could
+not determine* into a finding, and a question that one file would settle does not belong in
+part 8.
+
 ## Red flags
 
 | You are about to… | Instead |
@@ -133,6 +210,14 @@ caught by searching rather than re-reading.
 | Tour a conventional pattern | One sentence, one citation, move on |
 | Add a section because it feels missing | Cut from the bottom; the budget is fixed |
 | Repin a drifted document to make `check` pass | Re-read the citations first; `check` was right |
+| Call a file support without opening it | Open it; outside the feature's directories it is a finding until it isn't |
+| Diff against `master` because `base:` says so | Diff against the merge-base; master has moved since the fork |
+| Report a line count you read once and did not re-run | It is a claim like any other; verify it before shipping it |
+| Come back from an out-of-feature file with a finding it will not support | Ordinary is a valid answer. The step says look, not deliver |
+| Treat the diff as the list of what changed | Reconcile it against the commit list; a merge can undo a commit |
+| Present a comment's content as your own finding | Attribute it, and file it on the record |
+| Write a caption asserting an order or a cause | Read it back against the lines it sits beside |
+| Stop at "it is not in the registry" | Open the consumer; report what the absence costs |
 
 ## Format and tooling
 
