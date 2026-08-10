@@ -114,7 +114,7 @@ Why this matters.
   });
 
   it('gives a section ask a prompt naming the section and every pinned sha', () => {
-    const heading = html.match(/<h2>[\s\S]*?<\/h2>/)![0];
+    const heading = html.match(/<h2[^>]*>[\s\S]*?<\/h2>/)![0];
     const prompt = heading.match(/data-ask="([^"]*)"/)![1]!;
 
     expect(prompt).toContain('A heading');
@@ -141,7 +141,7 @@ sources:
 | \`a.ts\` | because |
 `);
 
-    expect(out).toContain('<h2');
+    expect(out).toMatch(/<h2[ >]/);
     expect(out).toContain('<table>');
     expect(out).toContain('<td>');
   });
@@ -447,5 +447,125 @@ sources:
 
     expect(out).toContain('<span class="cite-dir">deep/dir/</span>');
     expect(out).toContain('<span class="cite-file">file.ts</span>');
+  });
+});
+
+describe('section navigation', () => {
+  async function withHeadings() {
+    const repo = makeRepo({ 'a.ts': numberedLines(10) });
+    return render(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+## What shipped
+
+Text.
+
+## One ask per pro, per week
+
+Text.
+
+### A sub-heading
+
+:::cite a.ts:1-2
+:::
+`);
+  }
+
+  it('gives every heading a stable id', async () => {
+    const out = await withHeadings();
+
+    expect(out).toContain('<h2 id="what-shipped"');
+    expect(out).toContain('<h2 id="one-ask-per-pro-per-week"');
+    expect(out).toContain('<h3 id="a-sub-heading"');
+  });
+
+  it('lists the sections in a nav that links to them', async () => {
+    const out = await withHeadings();
+    const nav = out.match(/<nav class="toc"[\s\S]*?<\/nav>/)![0];
+
+    expect(nav).toContain('href="#what-shipped"');
+    expect(nav).toContain('href="#one-ask-per-pro-per-week"');
+    expect(nav).toContain('What shipped');
+    expect(nav.indexOf('#what-shipped')).toBeLessThan(nav.indexOf('#one-ask-per-pro-per-week'));
+  });
+
+  it('marks depth so the nav can indent sub-sections', async () => {
+    const out = await withHeadings();
+    const nav = out.match(/<nav class="toc"[\s\S]*?<\/nav>/)![0];
+
+    expect(nav).toContain('class="toc-2"');
+    expect(nav).toContain('class="toc-3"');
+  });
+
+  it('omits the nav when a document has no headings', async () => {
+    const repo = makeRepo({ 'a.ts': numberedLines(10) });
+    const out = await render(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+Just prose, no headings.
+`);
+
+    expect(out).not.toContain('<nav class="toc"');
+  });
+
+  it('keeps ids unique when two headings share a title', async () => {
+    const repo = makeRepo({ 'a.ts': numberedLines(10) });
+    const out = await render(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+## Notes
+
+## Notes
+`);
+
+    expect(out).toContain('id="notes"');
+    expect(out).toContain('id="notes-2"');
+  });
+});
+
+describe('the theme control', () => {
+  it('offers a control that names the two themes', async () => {
+    const repo = makeRepo({ 'a.ts': numberedLines(10) });
+    const out = await render(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+## Heading
+`);
+
+    expect(out).toContain('class="theme-toggle"');
+    expect(out).toMatch(/data-theme-set="dark"|aria-label="[^"]*theme/i);
+  });
+
+  it('styles both themes without relying on the system preference alone', async () => {
+    const repo = makeRepo({ 'a.ts': numberedLines(10) });
+    const out = await render(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+## Heading
+`);
+
+    expect(out).toContain('[data-theme="dark"]');
+    expect(out).toContain('[data-theme="light"]');
+    expect(out).toContain('prefers-color-scheme: dark');
   });
 });

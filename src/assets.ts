@@ -4,6 +4,74 @@
  */
 export const PAGE_SCRIPT = `
 (function () {
+  var root = document.documentElement;
+  var STORE = 'explorer-theme';
+
+  // Read before first paint would be better, but a self-contained file has one
+  // script and it runs here. The flash is one frame.
+  try {
+    var saved = localStorage.getItem(STORE);
+    if (saved === 'dark' || saved === 'light') root.dataset.theme = saved;
+  } catch (e) { /* private mode: fall back to the system preference */ }
+
+  function systemPrefersDark() {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  var toggle = document.querySelector('.theme-toggle');
+  if (toggle) {
+    toggle.addEventListener('click', function () {
+      var current = root.dataset.theme || (systemPrefersDark() ? 'dark' : 'light');
+      var next = current === 'dark' ? 'light' : 'dark';
+      root.dataset.theme = next;
+      try { localStorage.setItem(STORE, next); } catch (e) { /* nothing to do */ }
+    });
+  }
+
+  // --- section nav -------------------------------------------------------
+  var navLinks = [].slice.call(document.querySelectorAll('.toc a'));
+  if (navLinks.length) {
+    var targets = navLinks
+      .map(function (link) {
+        var id = link.getAttribute('href').slice(1);
+        return { link: link, heading: document.getElementById(id) };
+      })
+      .filter(function (entry) { return entry.heading; });
+
+    var current = null;
+    function mark() {
+      // The last heading whose top has passed the reading line. Cheaper than an
+      // observer per heading and correct when several share a screen.
+      var line = 120;
+      var found = targets[0];
+      for (var i = 0; i < targets.length; i += 1) {
+        if (targets[i].heading.getBoundingClientRect().top <= line) found = targets[i];
+      }
+      if (found === current) return;
+      if (current) current.link.removeAttribute('aria-current');
+      found.link.setAttribute('aria-current', 'true');
+      current = found;
+    }
+
+    var queued = false;
+    function schedule() {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(function () { queued = false; mark(); });
+    }
+
+    mark();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    // Clicking a link scrolls, but the anchored heading sits exactly on the
+    // reading line, so settle it explicitly rather than waiting for a frame.
+    navLinks.forEach(function (link) {
+      link.addEventListener('click', function () {
+        setTimeout(mark, 0);
+      });
+    });
+  }
+
   var toast = document.querySelector('.toast');
   var toastTimer;
 

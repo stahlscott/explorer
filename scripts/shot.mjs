@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 const [file, out, mode = 'light'] = process.argv.slice(2);
 const browser = await chromium.launch();
 const page = await browser.newPage({
-  viewport: { width: 900, height: 1400 },
+  viewport: { width: Number(process.env.W || 1400), height: Number(process.env.H || 1200) },
   deviceScaleFactor: 2,
   colorScheme: mode,
 });

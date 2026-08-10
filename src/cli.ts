@@ -2,7 +2,7 @@ import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { parseDocument } from './parse.ts';
 import { resolveDocument } from './resolve.ts';
 import { renderDocument } from './render.ts';
-import { DEFAULT_SKIN, isSkinName, SKINS, type SkinName } from './styles/skins.ts';
+import { DEFAULT_SKIN, isSkinName, SKINS } from './styles/skins.ts';
 
 type Write = (line: string) => void;
 
@@ -15,6 +15,7 @@ const USAGE = `usage: explorer <command> [options]
 
 Options:
   --style <name>   reading surface: ${Object.keys(SKINS).join(", ")} (default ${DEFAULT_SKIN})
+  --no-toc         leave out the section nav
 
 Exit codes: 0 ok, 1 the document or its citations failed, 2 wrong usage.`;
 
@@ -31,7 +32,8 @@ async function load(
   path: string,
   err: Write,
   wantHtml: boolean,
-  skin: SkinName = DEFAULT_SKIN,
+  skin: string = DEFAULT_SKIN,
+  toc = true,
 ): Promise<Loaded | null> {
   let text: string;
   try {
@@ -59,7 +61,7 @@ async function load(
 
   return {
     citations: resolution.citations.length,
-    html: await renderDocument(doc, resolution, { contextLines: CONTEXT_LINES, skin }),
+    html: await renderDocument(doc, resolution, { contextLines: CONTEXT_LINES, skin, toc }),
   };
 }
 
@@ -110,7 +112,7 @@ export async function run(argv: string[], out: Write, err: Write): Promise<numbe
       return 2;
     }
 
-    const loaded = await load(path, err, true, styleName);
+    const loaded = await load(path, err, true, styleName, !rest.includes('--no-toc'));
     // Nothing is written unless every citation resolved.
     if (!loaded?.html) return 1;
 

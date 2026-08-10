@@ -5,12 +5,14 @@ import type { Resolution, ResolvedCitation, ResolvedSource } from './resolve.ts'
 import { bundledLanguage, getHighlighter, languageForPath, THEMES } from './highlight.ts';
 import { PAGE_SCRIPT } from './assets.ts';
 import { BASE_STYLE, SHIKI_THEME_SWITCH } from './styles/base.ts';
-import { DEFAULT_SKIN, SKINS, type SkinName } from './styles/skins.ts';
+import { DEFAULT_SKIN, skinCss } from './styles/skins.ts';
 
 export interface RenderOptions {
   /** Lines of context kept either side of a citation. Must match the resolver. */
   contextLines?: number;
-  skin?: SkinName;
+  skin?: string;
+  /** Section nav. On by default; the layout hides it when there is no room. */
+  toc?: boolean;
 }
 
 export function escapeHtml(text: string): string {
@@ -177,8 +179,31 @@ function renderCitation(
     .join('');
 }
 
-function makeMarkdown(highlighter: Highlighter, sources: ResolvedSource[]): Marked {
+export interface Section {
+  id: string;
+  depth: number;
+  title: string;
+}
+
+/** Lowercase, words joined by hyphens, and suffixed when a title repeats. */
+function slugify(title: string, taken: Map<string, number>): string {
+  const base =
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'section';
+  const seen = (taken.get(base) ?? 0) + 1;
+  taken.set(base, seen);
+  return seen === 1 ? base : `${base}-${seen}`;
+}
+
+function makeMarkdown(
+  highlighter: Highlighter,
+  sources: ResolvedSource[],
+  sections: Section[],
+): Marked {
   const marked = new Marked({ gfm: true });
+  const taken = new Map<string, number>();
 
   marked.use({
     renderer: {
@@ -194,12 +219,15 @@ function makeMarkdown(highlighter: Highlighter, sources: ResolvedSource[]): Mark
       },
       heading({ tokens, depth }) {
         const inner = this.parser.parseInline(tokens);
+        const title = stripTags(inner);
+        const id = slugify(title, taken);
+        if (depth >= 2 && depth <= 3) sections.push({ id, depth, title });
         const ask = depth <= 3
           ? `<button class="ask" type="button" data-ask="${escapeHtml(
-              sectionAsk(stripTags(inner), sources),
+              sectionAsk(title, sources),
             )}">ask</button>`
           : '';
-        return `<h${depth}>${inner}${ask}</h${depth}>`;
+        return `<h${depth} id="${escapeHtml(id)}">${inner}${ask}</h${depth}>`;
       },
     },
   });
@@ -243,13 +271,27 @@ function renderHeader(doc: Doc, sources: ResolvedSource[]): string {
     .join('');
 }
 
+function renderToc(sections: Section[]): string {
+  if (sections.length === 0) return '';
+  const items = sections
+    .map(
+      section =>
+        `<li class="toc-${section.depth}"><a href="#${escapeHtml(section.id)}">${escapeHtml(
+          section.title,
+        )}</a></li>`,
+    )
+    .join('');
+  return `<nav class="toc" aria-label="Sections"><ol>${items}</ol></nav>`;
+}
+
 export async function renderDocument(
   doc: Doc,
   resolution: Resolution,
   options: RenderOptions = {},
 ): Promise<string> {
   const highlighter = await getHighlighter();
-  const markdown = makeMarkdown(highlighter, resolution.sources);
+  const sections: Section[] = [];
+  const markdown = makeMarkdown(highlighter, resolution.sources, sections);
 
   const byCitation = new Map(resolution.citations.map(c => [c.citation, c]));
   const inlineMarkdown = (text: string) => markdown.parseInline(text) as string;
@@ -272,9 +314,11 @@ export async function renderDocument(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(doc.title ?? 'explorer')}</title>
-<style>${SKINS[options.skin ?? DEFAULT_SKIN]}${BASE_STYLE}${SHIKI_THEME_SWITCH}</style>
+<style>${BASE_STYLE}${SHIKI_THEME_SWITCH}${skinCss(options.skin ?? DEFAULT_SKIN)}</style>
 </head>
 <body>
+<button class="theme-toggle" type="button" aria-label="Switch between the light and dark theme">theme</button>
+${options.toc === false ? '' : renderToc(sections)}
 <main>
 ${renderHeader(doc, resolution.sources)}
 ${body}

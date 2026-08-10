@@ -2,10 +2,11 @@
  * Layout and code mechanics, shared by every skin. Skins set the tokens and the
  * citation treatment; nothing here picks a colour.
  *
- * One measure, and everything shares it. An earlier version gave prose a
- * narrower column than the citations, which left every paragraph ending short
- * of the block above it — indistinguishable from arbitrary line breaks. Code
- * wraps instead of getting its own width.
+ * Two measures, placed with grid. Prose sits in the centre track; code and
+ * tables span all three. Grid placement is used rather than auto margins
+ * because an earlier version set the margins in a rule that a later `p` rule
+ * overrode at equal specificity, which left prose left-aligned and looking
+ * hard-wrapped.
  */
 export const BASE_STYLE = `
 * { box-sizing: border-box; }
@@ -16,13 +17,25 @@ body {
   color: var(--ink);
   font-family: var(--font-prose);
   font-size: var(--size-prose);
-  line-height: 1.65;
+  line-height: var(--line-prose, 1.62);
   text-rendering: optimizeLegibility;
 }
 main {
-  max-width: var(--measure);
+  max-width: var(--measure-code);
   margin: 0 auto;
   padding: 3.5rem 1.25rem 7rem;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, var(--measure-text))
+    minmax(0, 1fr);
+  align-content: start;
+}
+main > * { grid-column: 2; min-width: 0; }
+main > figure.cite,
+main > .sketch,
+main > table {
+  grid-column: 1 / -1;
 }
 
 h1, h2, h3 { font-family: var(--font-head); }
@@ -150,6 +163,7 @@ pre.shiki code { background: none; padding: 0; font-size: inherit; white-space: 
   user-select: none;
   font-variant-numeric: tabular-nums;
 }
+figure.cite { margin: 1.7rem 0; }
 figure.cite:not([data-expanded]) .line.ctx { display: none; }
 figure.cite[data-expanded] .line.ctx { opacity: .45; }
 
@@ -224,7 +238,61 @@ h1:hover .ask, h2:hover .ask, h3:hover .ask, .ask:focus-visible { opacity: 1; }
   box-shadow: 0 2px 12px rgba(0, 0, 0, .18);
 }
 
-@media (max-width: 44rem) {
+
+/* --- section nav --------------------------------------------------------- */
+.toc {
+  position: fixed;
+  top: 3.5rem;
+  left: 1.5rem;
+  width: 13rem;
+  max-height: calc(100vh - 7rem);
+  overflow-y: auto;
+  font-family: var(--font-ui);
+  font-size: .78rem;
+  line-height: 1.4;
+  display: none;
+}
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc li { margin: 0 0 .35rem; }
+.toc a {
+  color: var(--ink-faint);
+  text-decoration: none;
+  display: block;
+  padding: .1rem 0 .1rem .6rem;
+  border-left: 2px solid transparent;
+}
+.toc a:hover { color: var(--ink-soft); }
+.toc li.toc-3 a { padding-left: 1.5rem; font-size: .74rem; }
+.toc a[aria-current="true"] {
+  color: var(--ink);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Only when there is room beside the reading column; below that the reader
+   scrolls, which is what the nav was for. */
+@media (min-width: 78rem) {
+  .toc { display: block; }
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  font-family: var(--font-ui);
+  font-size: .72rem;
+  color: var(--ink-soft);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: .3rem .7rem;
+  cursor: pointer;
+  z-index: 5;
+}
+.theme-toggle:hover { color: var(--ink); }
+@media print { .toc, .theme-toggle { display: none !important; } }
+
+@media (max-width: 40rem) {
   main { padding: 2rem 1rem 4rem; }
   .line { padding-left: 2.8rem; }
   .line::before { width: 2.1rem; }
@@ -244,10 +312,10 @@ h1:hover .ask, h2:hover .ask, h3:hover .ask, .ask:focus-visible { opacity: 1; }
 
 /** Shiki writes both variables on every token; the media query picks one. */
 export const SHIKI_THEME_SWITCH = `
+.shiki span { color: var(--shiki-light); }
 @media (prefers-color-scheme: dark) {
-  .shiki span { color: var(--shiki-dark); }
+  :root:not([data-theme="light"]) .shiki span { color: var(--shiki-dark); }
 }
-@media (prefers-color-scheme: light) {
-  .shiki span { color: var(--shiki-light); }
-}
+:root[data-theme="dark"] .shiki span { color: var(--shiki-dark); }
+:root[data-theme="light"] .shiki span { color: var(--shiki-light); }
 `;

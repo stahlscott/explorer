@@ -274,26 +274,47 @@ test('renders a single-source document, where citations omit the source id', asy
   expect(truncated).toBe(0);
 });
 
-test('aligns prose with the citations around it on both edges', async ({ page }) => {
+test('centres every block, so a wider figure reads as deliberate', async ({ page }) => {
   await openOffline(page);
 
-  const misaligned = await page.evaluate(() => {
-    const children = [...document.querySelectorAll('main > *')].filter(
-      node => node.getBoundingClientRect().height > 0,
-    );
-    const edges = children.map(node => {
-      const box = node.getBoundingClientRect();
-      return { tag: node.tagName.toLowerCase(), left: Math.round(box.left), right: Math.round(box.right) };
-    });
-    const left = edges[0]!.left;
-    const right = edges[0]!.right;
-    return edges.filter(e => Math.abs(e.left - left) > 1 || Math.abs(e.right - right) > 1);
+  const lopsided = await page.evaluate(() => {
+    const main = document.querySelector('main')!;
+    const style = getComputedStyle(main);
+    const inner = {
+      left: main.getBoundingClientRect().left + parseFloat(style.paddingLeft),
+      right: main.getBoundingClientRect().right - parseFloat(style.paddingRight),
+    };
+
+    return [...main.children]
+      .filter(node => node.getBoundingClientRect().height > 0)
+      .map(node => {
+        const box = node.getBoundingClientRect();
+        return {
+          tag: node.tagName.toLowerCase(),
+          leftGap: Math.round(box.left - inner.left),
+          rightGap: Math.round(inner.right - box.right),
+        };
+      })
+      .filter(entry => Math.abs(entry.leftGap - entry.rightGap) > 2);
   });
 
-  // Prose that stops short of the block above it reads as an arbitrary line
-  // break rather than a measure.
-  expect(misaligned).toEqual([]);
+  // Prose is narrower than the citations on purpose. What made the earlier
+  // version look hard-wrapped was the gap being on one side only.
+  expect(lopsided).toEqual([]);
 });
+
+test('gives code a wider column than prose', async ({ page }) => {
+  await openOffline(page);
+
+  const widths = await page.evaluate(() => {
+    const width = (selector: string) =>
+      document.querySelector(selector)!.getBoundingClientRect().width;
+    return { prose: width('main > p'), code: width('main > figure.cite') };
+  });
+
+  expect(widths.code).toBeGreaterThan(widths.prose + 40);
+});
+
 
 test('keeps a citation affordances on one line when the path wraps', async ({ page }) => {
   await openOffline(page);
@@ -324,4 +345,145 @@ test('keeps the line range on the same line as the file name', async ({ page }) 
   );
 
   expect(split).toEqual([]);
+});
+
+test('switches theme on click and remembers the choice', async ({ page }) => {
+  await openOffline(page);
+
+  const paper = () =>
+    page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+
+  const before = await paper();
+  await page.locator('.theme-toggle').click();
+  const after = await paper();
+
+  expect(after).not.toBe(before);
+
+  // The choice has to survive a reload, or it is a gimmick.
+  const chosen = await page.evaluate(() => document.documentElement.dataset.theme);
+  await page.reload();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.dataset.theme))
+    .toBe(chosen);
+  expect(await paper()).toBe(after);
+});
+
+test('highlights the section the reader is in', async ({ page, viewport }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await openOffline(page);
+
+  const nav = page.locator('.toc');
+  await expect(nav).toBeVisible();
+
+  const first = nav.locator('a').first();
+  await expect(first).toHaveAttribute('aria-current', 'true');
+
+  // Jump to a later section and the nav should follow.
+  const target = nav.locator('a').nth(4);
+  const href = await target.getAttribute('href');
+  await target.click();
+  await expect(target).toHaveAttribute('aria-current', 'true');
+  expect(await page.evaluate(() => window.location.hash)).toBe(href);
+});
+
+test('the nav links land on their sections', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await openOffline(page);
+
+  const missing = await page.evaluate(() =>
+    [...document.querySelectorAll('.toc a')]
+      .map(link => (link as HTMLAnchorElement).getAttribute('href')!)
+      .filter(href => !document.querySelector(href)),
+  );
+
+  expect(missing).toEqual([]);
+});
+
+test('shows the citation path exactly as it is on disk, in every skin', async ({ page }) => {
+  for (const skin of ['panel', 'terminal', 'geocities']) {
+    const out = join(mkdtempSync(join(tmpdir(), `explorer2-${skin}-`)), 'artifact.html');
+    execFileSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        'src/cli.ts',
+        'render',
+        'stage0/feature-feedback.md',
+        '-o',
+        out,
+        '--style',
+        skin,
+      ],
+      { cwd: ROOT, encoding: 'utf8' },
+    );
+    await page.goto(pathToFileURL(out).href);
+
+    // A skin may restyle a path; it may not rewrite one. text-transform makes
+    // the rendered characters differ from the file on disk while textContent
+    // still matches, so no byte-identity check would catch it.
+    const altered = await page.evaluate(() =>
+      [...document.querySelectorAll('.cite-dir, .cite-file')]
+        .filter(node => getComputedStyle(node).textTransform !== 'none')
+        .map(node => node.textContent),
+    );
+
+    expect(altered, `${skin} alters the displayed path`).toEqual([]);
+  }
+});
+
+test('renders no text that disappears into its own background', async ({ page }) => {
+  for (const skin of ['panel', 'terminal', 'geocities']) {
+    const out = join(mkdtempSync(join(tmpdir(), `explorer2-contrast-${skin}-`)), 'artifact.html');
+    execFileSync(
+      process.execPath,
+      ['--experimental-strip-types', 'src/cli.ts', 'render', 'stage0/feature-feedback.md',
+        '-o', out, '--style', skin],
+      { cwd: ROOT, encoding: 'utf8' },
+    );
+    await page.goto(pathToFileURL(out).href);
+
+    const unreadable = await page.evaluate(() => {
+      const parse = (colour: string) =>
+        (colour.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+      const luminance = ([r, g, b]: number[]) => {
+        const lin = [r!, g!, b!].map(channel => {
+          const c = channel / 255;
+          return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * lin[0]! + 0.7152 * lin[1]! + 0.0722 * lin[2]!;
+      };
+
+      /** Walk up until something paints a background. */
+      const backdrop = (node: Element): number[] => {
+        let cursor: Element | null = node;
+        while (cursor) {
+          const colour = getComputedStyle(cursor).backgroundColor;
+          const parts = parse(colour);
+          const alpha = (colour.match(/[\d.]+/g) ?? [])[3];
+          if (parts.length === 3 && alpha !== '0') return parts;
+          cursor = cursor.parentElement;
+        }
+        return [255, 255, 255];
+      };
+
+      return [...document.querySelectorAll('main *, .toc a, .theme-toggle')]
+        .filter(node => {
+          const text = [...node.childNodes].some(
+            child => child.nodeType === 3 && child.textContent!.trim() !== '',
+          );
+          return text && node.getBoundingClientRect().height > 0;
+        })
+        .map(node => {
+          const front = luminance(parse(getComputedStyle(node).color));
+          const back = luminance(backdrop(node));
+          const ratio =
+            (Math.max(front, back) + 0.05) / (Math.min(front, back) + 0.05);
+          return { tag: `${node.tagName.toLowerCase()}.${node.className}`, ratio };
+        })
+        .filter(entry => entry.ratio < 2)
+        .slice(0, 6);
+    });
+
+    expect(unreadable, `${skin} has text with almost no contrast`).toEqual([]);
+  }
 });
