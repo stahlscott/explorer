@@ -2,10 +2,10 @@
  * Layout and code mechanics, shared by every skin. Skins set the tokens and the
  * citation treatment; nothing here picks a colour.
  *
- * Two measures on purpose. Prose sits at roughly 68 characters, which is where
- * it reads; code gets a wider column, because a wrapped line of TypeScript is
- * harder to follow than a wide one. Tables get the wide column too — the
- * core/support table was unreadable squeezed into the prose measure.
+ * One measure, and everything shares it. An earlier version gave prose a
+ * narrower column than the citations, which left every paragraph ending short
+ * of the block above it — indistinguishable from arbitrary line breaks. Code
+ * wraps instead of getting its own width.
  */
 export const BASE_STYLE = `
 * { box-sizing: border-box; }
@@ -20,20 +20,9 @@ body {
   text-rendering: optimizeLegibility;
 }
 main {
-  max-width: var(--measure-wide);
+  max-width: var(--measure);
   margin: 0 auto;
   padding: 3.5rem 1.25rem 7rem;
-}
-main > * {
-  max-width: var(--measure-text);
-  margin-left: auto;
-  margin-right: auto;
-}
-main > figure.cite,
-main > .sketch,
-main > table,
-main > header {
-  max-width: var(--measure-wide);
 }
 
 h1, h2, h3 { font-family: var(--font-head); }
@@ -64,7 +53,6 @@ header { padding-bottom: 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid v
   color: var(--ink-soft);
   font-size: 1.02em;
   margin: 0 0 1.1rem;
-  max-width: var(--measure-text);
 }
 ul.pins {
   list-style: none;
@@ -94,7 +82,7 @@ table {
   border-collapse: collapse;
   table-layout: fixed;
   width: 100%;
-  margin: 1.2rem auto 1.8rem;
+  margin: 1.2rem 0 1.8rem;
   font-family: var(--font-ui);
   font-size: .82rem;
   line-height: 1.5;
@@ -167,9 +155,13 @@ figure.cite[data-expanded] .line.ctx { opacity: .45; }
 
 /* --- affordances --------------------------------------------------------- */
 .cite-head { font-family: var(--font-mono); font-size: .72rem; }
-.cite-where { overflow-wrap: anywhere; min-width: 0; }
+.cite-where { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .cite-where b { color: var(--ink); font-weight: 700; }
-.cite-lines { color: var(--ink-faint); white-space: nowrap; }
+.cite-dir { color: var(--ink-faint); }
+.cite-tail { white-space: nowrap; }
+.cite-file { color: var(--ink-soft); }
+.cite-lines { color: var(--ink-faint); white-space: nowrap; margin-left: .45rem; }
+.cite-acts { flex: 0 0 auto; display: flex; gap: .1rem; align-self: flex-start; }
 button.cite-more, button.ask, a.cite-link {
   font: inherit;
   font-family: var(--font-mono);
@@ -232,7 +224,7 @@ h1:hover .ask, h2:hover .ask, h3:hover .ask, .ask:focus-visible { opacity: 1; }
   box-shadow: 0 2px 12px rgba(0, 0, 0, .18);
 }
 
-@media (max-width: 46rem) {
+@media (max-width: 44rem) {
   main { padding: 2rem 1rem 4rem; }
   .line { padding-left: 2.8rem; }
   .line::before { width: 2.1rem; }

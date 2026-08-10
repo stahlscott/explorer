@@ -37,8 +37,7 @@ const PAPER = `
   --size-h2: 1.62rem;
   --size-h3: 1.15rem;
   --weight-head: 600;
-  --measure-text: 34rem;
-  --measure-wide: 47rem;
+  --measure: 40rem;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -64,13 +63,11 @@ figure.cite {
   color: var(--ink-faint);
   padding: 0 0 .4rem;
 }
-.cite-lines { margin-right: auto; }
 .cite pre.shiki { padding: 0; }
 figure.cite figcaption {
   padding: .55rem 0 0;
   font-size: .92rem;
   color: var(--ink-soft);
-  max-width: var(--measure-text);
 }
 `;
 
@@ -98,8 +95,7 @@ const PANEL = `
   --size-h2: 1.4rem;
   --size-h3: 1.08rem;
   --weight-head: 680;
-  --measure-text: 35rem;
-  --measure-wide: 48rem;
+  --measure: 40rem;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -130,7 +126,6 @@ figure.cite {
   border-bottom: 1px solid var(--rule);
   color: var(--ink-soft);
 }
-.cite-lines { margin-right: auto; }
 .cite pre.shiki { padding: .7rem 0; }
 figure.cite figcaption {
   padding: .55rem .85rem .65rem;
@@ -166,8 +161,7 @@ const PRESS = `
   --size-h2: 1.75rem;
   --size-h3: 1.12rem;
   --weight-head: 700;
-  --measure-text: 33rem;
-  --measure-wide: 46rem;
+  --measure: 40rem;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -203,14 +197,12 @@ figure.cite {
   color: var(--ink-faint);
   text-transform: none;
 }
-.cite-lines { margin-right: auto; }
 .cite pre.shiki { padding: .5rem 0 .7rem; }
 figure.cite figcaption {
   padding: .5rem 0 .6rem;
   border-top: 1px dotted var(--rule);
   font-size: .9rem;
   color: var(--ink-soft);
-  max-width: var(--measure-text);
 }
 `;
 

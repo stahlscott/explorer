@@ -8,6 +8,12 @@ export interface ResolvedSource extends Source {
   directory: string;
   /** The head ref pinned to a concrete commit. Every blob is read at this sha. */
   sha: string;
+  /**
+   * A checkout whose working tree is at `sha`, or null when none is. Null means
+   * no editor link: the files an editor would open are a different commit's, and
+   * a cited path may not exist on disk at all.
+   */
+  checkout: string | null;
 }
 
 export interface ResolvedCitation {
@@ -74,6 +80,28 @@ function toLines(blob: string): string[] {
   return lines;
 }
 
+/**
+ * The working tree sitting at `sha`, checking linked worktrees as well as the
+ * main one. A stacked branch is usually checked out in a worktree rather than
+ * the directory the document names, and only a tree at the pinned commit holds
+ * the bytes the artifact shows.
+ */
+function findCheckout(directory: string, sha: string): string | null {
+  let listing: string;
+  try {
+    listing = git(directory, ['worktree', 'list', '--porcelain']);
+  } catch {
+    return null;
+  }
+
+  let path: string | null = null;
+  for (const line of listing.split('\n')) {
+    if (line.startsWith('worktree ')) path = line.slice('worktree '.length);
+    else if (line.startsWith('HEAD ') && line.slice('HEAD '.length).trim() === sha) return path;
+  }
+  return null;
+}
+
 function pinSource(source: Source): ResolvedSource | CitationFailure {
   const directory = expandHome(source.path);
 
@@ -88,7 +116,7 @@ function pinSource(source: Source): ResolvedSource | CitationFailure {
 
   try {
     const sha = git(directory, ['rev-parse', '--verify', `${source.head}^{commit}`]).trim();
-    return { ...source, directory, sha };
+    return { ...source, directory, sha, checkout: findCheckout(directory, sha) };
   } catch {
     return {
       code: 'ref-not-found',

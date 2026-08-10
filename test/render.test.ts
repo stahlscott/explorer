@@ -4,7 +4,7 @@ import { parseDocument } from '../src/parse.ts';
 import { resolveDocument } from '../src/resolve.ts';
 import { renderDocument } from '../src/render.ts';
 import { languageForPath } from '../src/highlight.ts';
-import { makeRepo, numberedLines } from './helpers/repo.ts';
+import { addUncheckedBranch, addWorktree, makeRepo, numberedLines } from './helpers/repo.ts';
 
 /** Recover the visible text of one rendered region, tags and entities removed. */
 function textOf(html: string): string {
@@ -347,5 +347,105 @@ sources:
     expect(out).toContain('href="https://github.com/styleseat/mobileweb/pull/12800"');
     expect(out).toContain('href="https://github.com/styleseat/mobileweb/pull/12805"');
     expect(out).toContain('#12805');
+  });
+});
+
+describe('the editor link', () => {
+  function docFor(repoPath: string, head: string, body: string): string {
+    return `---
+title: Fixture
+sources:
+  - id: web
+    repo: styleseat/mobileweb
+    path: ${repoPath}
+    head: ${head}
+---
+${body}`;
+  }
+
+  it('links the checkout when it holds the pinned commit', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(20) });
+    const out = await render(docFor(repo.path, 'main', ':::cite src/a.ts:4-8\n:::\n'));
+
+    expect(out).toContain(`href="vscode://file${repo.path}/src/a.ts:4"`);
+  });
+
+  it('offers no editor link when no checkout holds the pinned commit', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(20) });
+    addUncheckedBranch(repo, 'feature', { 'src/b.ts': numberedLines(30) });
+
+    const out = await render(docFor(repo.path, 'feature', ':::cite src/b.ts:2-4\n:::\n'));
+
+    // src/b.ts exists only on the un-checked-out branch, so a working-tree link
+    // would open nothing.
+    expect(out).not.toContain('vscode://');
+    expect(out).toContain('github.com');
+  });
+
+  it('links the worktree that holds the pinned commit', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(20) });
+    addUncheckedBranch(repo, 'feature', { 'src/b.ts': numberedLines(30) });
+    const worktree = addWorktree(repo, 'feature');
+
+    const out = await render(docFor(repo.path, 'feature', ':::cite src/b.ts:2-4\n:::\n'));
+
+    expect(out).toContain(`href="vscode://file${worktree}/src/b.ts:2"`);
+  });
+});
+
+describe('the citation header', () => {
+  it('keeps the line range next to the path it belongs to', async () => {
+    const repo = makeRepo({ 'a/very/long/path/to/some/module/file.ts': numberedLines(40) });
+    const out = await render(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+:::cite a/very/long/path/to/some/module/file.ts:32-35
+:::
+`);
+
+    const where = out.match(/<span class="cite-where">([\s\S]*?)<\/span>\s*<span class="cite-acts"/);
+    expect(where, 'header should be where-then-actions').not.toBeNull();
+    expect(where![1]).toContain('32–35');
+  });
+
+  it('groups the affordances so they stay together when the path wraps', async () => {
+    const repo = makeRepo({ 'a.ts': numberedLines(40) });
+    const out = await render(`---
+title: Fixture
+sources:
+  - id: web
+    repo: styleseat/mobileweb
+    path: ${repo.path}
+    head: main
+---
+:::cite a.ts:2-3
+:::
+`);
+
+    const acts = out.match(/<span class="cite-acts">([\s\S]*?)<\/span><\/div>/)![1]!;
+    expect(acts).toContain('cite-more');
+    expect(acts).toContain('github');
+    expect(acts).toContain('ask');
+  });
+
+  it('distinguishes the file name from its directory', async () => {
+    const repo = makeRepo({ 'deep/dir/file.ts': numberedLines(40) });
+    const out = await render(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+:::cite deep/dir/file.ts:2-3
+:::
+`);
+
+    expect(out).toContain('<span class="cite-dir">deep/dir/</span>');
+    expect(out).toContain('<span class="cite-file">file.ts</span>');
   });
 });

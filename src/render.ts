@@ -63,12 +63,14 @@ function githubBlobUrl(resolved: ResolvedCitation): string | null {
 }
 
 /**
- * Opens the working tree, which is the point — you go there to change it — but
- * that also means it may not match the pinned sha the artifact shows.
+ * Only offered when some checkout is at the pinned commit, so the file it opens
+ * is the file the artifact shows. Without that check the link points into
+ * whatever branch happens to be checked out, where the path may not exist.
  */
-function editorUrl(resolved: ResolvedCitation): string {
+function editorUrl(resolved: ResolvedCitation): string | null {
   const { citation, source } = resolved;
-  return `vscode://file${source.directory}/${citation.path}:${citation.start}`;
+  if (!source.checkout) return null;
+  return `vscode://file${source.checkout}/${citation.path}:${citation.start}`;
 }
 
 /**
@@ -131,25 +133,41 @@ function renderCitation(
   const code = `<pre class="shiki"><code>${window}</code></pre>`;
 
   const blobUrl = githubBlobUrl(resolved);
+  const openUrl = editorUrl(resolved);
   const range =
     citation.start === citation.end
       ? `${citation.start}`
       : `${citation.start}–${citation.end}`;
   const hasContext = before.length > 0 || after.length > 0;
 
+  const cut = citation.path.lastIndexOf('/');
+  const directory = cut === -1 ? '' : citation.path.slice(0, cut + 1);
+  const file = citation.path.slice(cut + 1);
+
   return [
     `<figure class="cite" id="cite-${index}">`,
     '<div class="cite-head">',
-    `<span class="cite-where"><b>${escapeHtml(source.id)}</b> ${escapeHtml(citation.path)}</span>`,
-    `<span class="cite-lines">${range}</span>`,
+    // Path and range are one unit: a range that wraps away from its path says
+    // nothing. The affordances are a second unit, and stay together.
+    '<span class="cite-where">' +
+      `<b>${escapeHtml(source.id)}</b> ` +
+      `<span class="cite-dir">${escapeHtml(directory)}</span>` +
+      // File name and range travel together; only the directory may wrap.
+      `<span class="cite-tail"><span class="cite-file">${escapeHtml(file)}</span>` +
+      `<span class="cite-lines">${range}</span></span>` +
+      '</span>',
+    '<span class="cite-acts">',
     hasContext
       ? '<button class="cite-more" type="button" aria-expanded="false">context</button>'
       : '',
     blobUrl
       ? `<a class="cite-link" href="${escapeHtml(blobUrl)}" title="GitHub, at this commit">github</a>`
       : '',
-    `<a class="cite-link" href="${escapeHtml(editorUrl(resolved))}" title="Opens your working tree, which may differ from the pinned commit">editor</a>`,
+    openUrl
+      ? `<a class="cite-link" href="${escapeHtml(openUrl)}" title="Open in your editor, at the pinned commit">editor</a>`
+      : '',
     `<button class="ask" type="button" data-ask="${escapeHtml(citationAsk(resolved))}">ask</button>`,
+    '</span>',
     '</div>',
     `<div class="cite-code">${code}</div>`,
     citation.caption ? `<figcaption>${inlineMarkdown(citation.caption)}</figcaption>` : '',

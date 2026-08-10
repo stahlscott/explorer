@@ -130,7 +130,9 @@ test('every cited line the browser shows matches the repository at the pinned sh
     ]),
     citations: [...document.querySelectorAll('figure.cite')].map(figure => ({
       sourceId: figure.querySelector('.cite-where b')!.textContent!,
-      path: figure.querySelector('.cite-where')!.textContent!.split(' ').slice(1).join(' '),
+      path:
+        figure.querySelector('.cite-dir')!.textContent! +
+        figure.querySelector('.cite-file')!.textContent!,
       range: figure.querySelector('.cite-lines')!.textContent!,
       lines: [...figure.querySelectorAll('.line:not(.ctx)')].map(line => line.textContent!),
     })),
@@ -270,4 +272,56 @@ test('renders a single-source document, where citations omit the source id', asy
       ).length,
   );
   expect(truncated).toBe(0);
+});
+
+test('aligns prose with the citations around it on both edges', async ({ page }) => {
+  await openOffline(page);
+
+  const misaligned = await page.evaluate(() => {
+    const children = [...document.querySelectorAll('main > *')].filter(
+      node => node.getBoundingClientRect().height > 0,
+    );
+    const edges = children.map(node => {
+      const box = node.getBoundingClientRect();
+      return { tag: node.tagName.toLowerCase(), left: Math.round(box.left), right: Math.round(box.right) };
+    });
+    const left = edges[0]!.left;
+    const right = edges[0]!.right;
+    return edges.filter(e => Math.abs(e.left - left) > 1 || Math.abs(e.right - right) > 1);
+  });
+
+  // Prose that stops short of the block above it reads as an arbitrary line
+  // break rather than a measure.
+  expect(misaligned).toEqual([]);
+});
+
+test('keeps a citation affordances on one line when the path wraps', async ({ page }) => {
+  await openOffline(page);
+
+  const broken = await page.evaluate(() =>
+    [...document.querySelectorAll('.cite-acts')]
+      .filter(acts => {
+        const tops = [...acts.children].map(child => Math.round(child.getBoundingClientRect().top));
+        return new Set(tops).size > 1;
+      })
+      .length,
+  );
+
+  expect(broken).toBe(0);
+});
+
+test('keeps the line range on the same line as the file name', async ({ page }) => {
+  await openOffline(page);
+
+  const split = await page.evaluate(() =>
+    [...document.querySelectorAll('figure.cite')]
+      .filter(figure => {
+        const file = figure.querySelector('.cite-file')!.getBoundingClientRect();
+        const lines = figure.querySelector('.cite-lines')!.getBoundingClientRect();
+        return Math.abs(file.top - lines.top) > 1;
+      })
+      .map(figure => figure.querySelector('.cite-file')!.textContent),
+  );
+
+  expect(split).toEqual([]);
 });
