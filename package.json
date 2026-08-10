@@ -1,0 +1,33 @@
+{
+  "name": "explorer2",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "explorer": "./dist/explorer.js"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "type-check": "tsc --noEmit",
+    "explorer": "node --experimental-strip-types src/cli.ts",
+    "verify": "npm run type-check && vitest run && playwright test"
+  },
+  "dependencies": {
+    "marked": "^15.0.7",
+    "shiki": "^3.2.1",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.0",
+    "@types/node": "^22.13.10",
+    "esbuild": "^0.25.1",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true
+  }
+}
