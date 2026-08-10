@@ -168,10 +168,13 @@ const illustrative = true;
     expect(out.indexOf('class="sketch"')).toBeLessThan(out.indexOf('<figure class="cite"'));
   });
 
-  it('requests nothing over the network', () => {
-    const urls = html.match(/(?:src|href)\s*=\s*"(https?:)?\/\/[^"]*"/g) ?? [];
-    expect(urls).toEqual([]);
-    expect(html).not.toContain('@import url(');
+  it('loads no resource over the network', () => {
+    // Anchor hrefs are user-initiated navigation, not a resource the page
+    // fetches. What must not appear is anything the browser would go and get.
+    expect(html).not.toMatch(/<link[^>]/);
+    expect(html).not.toMatch(/<(?:script|img|iframe|source)[^>]+src\s*=/);
+    expect(html).not.toContain('@import');
+    expect(html).not.toMatch(/url\(\s*['"]?https?:/);
   });
 
   it('inlines its styles and script rather than linking them', () => {
@@ -217,5 +220,132 @@ sources:
     expect(caption).toContain('<code>verdicts</code>');
     expect(caption).toContain('<strong>not</strong>');
     expect(caption).not.toContain('`');
+  });
+});
+
+describe('highlighting is resolved against the whole file', () => {
+  const WITH_DOCSTRING = [
+    'class Thing:',                             // 1
+    '    """A docstring that spans',            // 2
+    '',                                         // 3
+    '    several lines and closes below.',      // 4
+    '    """',                                  // 5
+    '',                                         // 6
+    '    def create(self, data):',              // 7
+    '        name = data["name"]',              // 8
+    '        return {"name": name}',            // 9
+    '',                                         // 10
+  ].join('\n');
+
+  /** Distinct colours among the cited lines only, ignoring context and the pre. */
+  function citedColours(html: string): number {
+    const figure = html.match(/<figure class="cite"[\s\S]*?<\/figure>/)![0];
+    const code = figure.match(/<code[^>]*>([\s\S]*?)<\/code>/)![1]!;
+    const cited = code
+      .split('\n')
+      .filter(line => line.includes('class="line"') && !line.includes('ctx'));
+    return new Set(cited.flatMap(line => line.match(/--shiki-light:[^;"]+/g) ?? [])).size;
+  }
+
+  function docFor(repoPath: string, body: string): string {
+    return `---
+title: Fixture
+sources:
+  - id: api
+    path: ${repoPath}
+    head: main
+---
+${body}`;
+  }
+
+  it('highlights an excerpt whose context window opens on a closing docstring', async () => {
+    const repo = makeRepo({ 'a.py': WITH_DOCSTRING });
+    // Citing 8-9 with three lines of context starts the window on line 5, which
+    // is the closing `"""`. Highlighting from there reads it as an opening quote
+    // and paints the rest of the excerpt as one string.
+    const parsed = parseDocument(docFor(repo.path, ':::cite a.py:8-9\n:::\n'));
+    const out = await renderDocument(parsed, resolveDocument(parsed, { contextLines: 3 }), {});
+
+    expect(citedColours(out)).toBeGreaterThan(2);
+  });
+
+  it('gives a cited line the same markup however much context surrounds it', async () => {
+    const repo = makeRepo({ 'a.py': WITH_DOCSTRING });
+    const parsed = parseDocument(docFor(repo.path, ':::cite a.py:8-8\n:::\n'));
+
+    const windowed = await renderDocument(parsed, resolveDocument(parsed, { contextLines: 3 }), {});
+    const bare = await renderDocument(parsed, resolveDocument(parsed, { contextLines: 0 }), {});
+
+    const citedLine = (html: string) =>
+      html.match(/<span class="line" data-line="8">([\s\S]*?)<\/span><\/span>/)![1];
+
+    expect(citedLine(windowed)).toBe(citedLine(bare));
+  });
+});
+
+describe('links out of the artifact', () => {
+  function docFor(repoPath: string, extra: string, body: string): string {
+    return `---
+title: Fixture
+sources:
+  - id: web
+    repo: styleseat/mobileweb
+    path: ${repoPath}
+    head: main
+${extra}---
+${body}`;
+  }
+
+  it('links a citation to the GitHub blob at the pinned sha and line range', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(20) });
+    const out = await render(docFor(repo.path, '', ':::cite src/a.ts:4-8\n:::\n'));
+
+    expect(out).toContain(
+      `href="https://github.com/styleseat/mobileweb/blob/${repo.sha}/src/a.ts#L4-L8"`,
+    );
+  });
+
+  it('uses a single line anchor for a single line citation', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(20) });
+    const out = await render(docFor(repo.path, '', ':::cite src/a.ts:9\n:::\n'));
+
+    expect(out).toContain('#L9"');
+    expect(out).not.toContain('#L9-L9');
+  });
+
+  it('links a citation to the file in an editor at the cited line', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(20) });
+    const out = await render(docFor(repo.path, '', ':::cite src/a.ts:4-8\n:::\n'));
+
+    expect(out).toContain(`href="vscode://file${repo.path}/src/a.ts:4"`);
+  });
+
+  it('omits the GitHub link when the source declares no repo', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(20) });
+    const parsed = parseDocument(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+:::cite src/a.ts:1-2
+:::
+`);
+    const out = await renderDocument(parsed, resolveDocument(parsed, { contextLines: 2 }), {});
+
+    expect(out).not.toContain('github.com');
+    expect(out).toContain('vscode://file');
+  });
+
+  it('links each pull request a source names in front matter', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(20) });
+    const out = await render(
+      docFor(repo.path, '    prs: [12800, 12805]\n', ':::cite src/a.ts:1-2\n:::\n'),
+    );
+
+    expect(out).toContain('href="https://github.com/styleseat/mobileweb/pull/12800"');
+    expect(out).toContain('href="https://github.com/styleseat/mobileweb/pull/12805"');
+    expect(out).toContain('#12805');
   });
 });

@@ -6,6 +6,8 @@ export interface Source {
   path: string;
   base: string | null;
   head: string;
+  /** Pull requests this source's head covers, for links out of the artifact. */
+  prs: number[];
 }
 
 export interface Citation {
@@ -78,12 +80,16 @@ function readSources(frontMatter: Record<string, unknown>): Source[] {
         throw new DocumentError(`source ${i} is missing a ${required}`);
       }
     }
+    const prs = source.prs ?? source.pr;
     return {
       id: source.id as string,
       repo: typeof source.repo === 'string' ? source.repo : null,
       path: source.path as string,
       base: typeof source.base === 'string' ? source.base : null,
       head: source.head as string,
+      prs: (Array.isArray(prs) ? prs : prs === undefined ? [] : [prs])
+        .map(Number)
+        .filter(Number.isInteger),
     };
   });
 }

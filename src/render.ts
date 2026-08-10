@@ -3,11 +3,14 @@ import type { Highlighter } from 'shiki';
 import type { Doc } from './parse.ts';
 import type { Resolution, ResolvedCitation, ResolvedSource } from './resolve.ts';
 import { bundledLanguage, getHighlighter, languageForPath, THEMES } from './highlight.ts';
-import { PAGE_SCRIPT, PAGE_STYLE } from './assets.ts';
+import { PAGE_SCRIPT } from './assets.ts';
+import { BASE_STYLE, SHIKI_THEME_SWITCH } from './styles/base.ts';
+import { DEFAULT_SKIN, SKINS, type SkinName } from './styles/skins.ts';
 
 export interface RenderOptions {
   /** Lines of context kept either side of a citation. Must match the resolver. */
   contextLines?: number;
+  skin?: SkinName;
 }
 
 export function escapeHtml(text: string): string {
@@ -48,33 +51,86 @@ function sectionAsk(title: string, sources: ResolvedSource[]): string {
   ]);
 }
 
-function renderCitation(
+/** A permalink, so it keeps showing what the artifact shows. */
+function githubBlobUrl(resolved: ResolvedCitation): string | null {
+  const { citation, source } = resolved;
+  if (!source.repo) return null;
+  const anchor =
+    citation.start === citation.end
+      ? `#L${citation.start}`
+      : `#L${citation.start}-L${citation.end}`;
+  return `https://github.com/${source.repo}/blob/${source.sha}/${citation.path}${anchor}`;
+}
+
+/**
+ * Opens the working tree, which is the point — you go there to change it — but
+ * that also means it may not match the pinned sha the artifact shows.
+ */
+function editorUrl(resolved: ResolvedCitation): string {
+  const { citation, source } = resolved;
+  return `vscode://file${source.directory}/${citation.path}:${citation.start}`;
+}
+
+/**
+ * The whole file, highlighted once and split into one HTML fragment per line.
+ *
+ * Highlighting only the excerpt starts the grammar mid-file, so an excerpt whose
+ * window opens on a closing delimiter — the `"""` that ends a docstring — reads
+ * as an opening one and paints everything after it as a single token. Shiki
+ * emits exactly one newline between line spans, which is what makes the split
+ * safe.
+ */
+function highlightFile(
   resolved: ResolvedCitation,
   highlighter: Highlighter,
-  index: number,
-  inlineMarkdown: (markdown: string) => string,
-): string {
-  const { citation, source, before, lines, after } = resolved;
-  const firstLine = citation.start - before.length;
-  const body = [...before, ...lines, ...after].join('\n');
+  cache: Map<string, string[]>,
+): string[] {
+  const key = `${resolved.source.sha}:${resolved.citation.path}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
 
-  const code = highlighter.codeToHtml(body, {
-    lang: bundledLanguage(languageForPath(citation.path)),
+  const html = highlighter.codeToHtml(resolved.fileLines.join('\n'), {
+    lang: bundledLanguage(languageForPath(resolved.citation.path)),
     themes: THEMES,
     defaultColor: false,
     transformers: [
       {
-        line(node, relative) {
-          const absolute = firstLine + relative - 1;
-          node.properties['data-line'] = String(absolute);
-          if (absolute < citation.start || absolute > citation.end) {
-            node.properties.class = `${node.properties.class ?? ''} ctx`.trim();
-          }
+        line(node, line) {
+          node.properties['data-line'] = String(line);
         },
       },
     ],
   });
 
+  const body = html.match(/<code[^>]*>([\s\S]*)<\/code>/)![1]!;
+  const lines = body.split('\n');
+  cache.set(key, lines);
+  return lines;
+}
+
+function renderCitation(
+  resolved: ResolvedCitation,
+  highlighter: Highlighter,
+  index: number,
+  inlineMarkdown: (markdown: string) => string,
+  cache: Map<string, string[]>,
+): string {
+  const { citation, source, before, after } = resolved;
+  const firstLine = citation.start - before.length;
+  const lastLine = citation.end + after.length;
+
+  const window = highlightFile(resolved, highlighter, cache)
+    .slice(firstLine - 1, lastLine)
+    .map((line, offset) => {
+      const absolute = firstLine + offset;
+      const isContext = absolute < citation.start || absolute > citation.end;
+      return isContext ? line.replace('class="line"', 'class="line ctx"') : line;
+    })
+    .join('\n');
+
+  const code = `<pre class="shiki"><code>${window}</code></pre>`;
+
+  const blobUrl = githubBlobUrl(resolved);
   const range =
     citation.start === citation.end
       ? `${citation.start}`
@@ -89,6 +145,10 @@ function renderCitation(
     hasContext
       ? '<button class="cite-more" type="button" aria-expanded="false">context</button>'
       : '',
+    blobUrl
+      ? `<a class="cite-link" href="${escapeHtml(blobUrl)}" title="GitHub, at this commit">github</a>`
+      : '',
+    `<a class="cite-link" href="${escapeHtml(editorUrl(resolved))}" title="Opens your working tree, which may differ from the pinned commit">editor</a>`,
     `<button class="ask" type="button" data-ask="${escapeHtml(citationAsk(resolved))}">ask</button>`,
     '</div>',
     `<div class="cite-code">${code}</div>`,
@@ -138,7 +198,19 @@ function renderHeader(doc: Doc, sources: ResolvedSource[]): string {
         `<li><span class="pin-id">${escapeHtml(s.id)}</span> <span class="pin-repo">${escapeHtml(
           sourceLabel(s),
         )}</span> <code class="pin-sha">${escapeHtml(s.sha)}</code>` +
-        `${s.base ? ` <span class="pin-base">base ${escapeHtml(s.base)}</span>` : ''}</li>`,
+        `${s.base ? ` <span class="pin-base">base ${escapeHtml(s.base)}</span>` : ''}` +
+        `${
+          s.repo
+            ? s.prs
+                .map(
+                  pr =>
+                    ` <a class="pin-pr" href="https://github.com/${escapeHtml(
+                      s.repo!,
+                    )}/pull/${pr}">#${pr}</a>`,
+                )
+                .join('')
+            : ''
+        }</li>`,
     )
     .join('');
 
@@ -156,13 +228,14 @@ function renderHeader(doc: Doc, sources: ResolvedSource[]): string {
 export async function renderDocument(
   doc: Doc,
   resolution: Resolution,
-  _options: RenderOptions = {},
+  options: RenderOptions = {},
 ): Promise<string> {
   const highlighter = await getHighlighter();
   const markdown = makeMarkdown(highlighter, resolution.sources);
 
   const byCitation = new Map(resolution.citations.map(c => [c.citation, c]));
   const inlineMarkdown = (text: string) => markdown.parseInline(text) as string;
+  const highlighted = new Map<string, string[]>();
   let citationIndex = 0;
 
   const body = doc.blocks
@@ -171,7 +244,7 @@ export async function renderDocument(
       const resolved = byCitation.get(block);
       if (!resolved) return '';
       citationIndex += 1;
-      return renderCitation(resolved, highlighter, citationIndex, inlineMarkdown);
+      return renderCitation(resolved, highlighter, citationIndex, inlineMarkdown, highlighted);
     })
     .join('\n');
 
@@ -181,7 +254,7 @@ export async function renderDocument(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(doc.title ?? 'explorer')}</title>
-<style>${PAGE_STYLE}</style>
+<style>${SKINS[options.skin ?? DEFAULT_SKIN]}${BASE_STYLE}${SHIKI_THEME_SWITCH}</style>
 </head>
 <body>
 <main>

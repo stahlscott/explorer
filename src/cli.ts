@@ -2,6 +2,7 @@ import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { parseDocument } from './parse.ts';
 import { resolveDocument } from './resolve.ts';
 import { renderDocument } from './render.ts';
+import { DEFAULT_SKIN, isSkinName, SKINS, type SkinName } from './styles/skins.ts';
 
 type Write = (line: string) => void;
 
@@ -11,6 +12,9 @@ const USAGE = `usage: explorer <command> [options]
 
   render <doc.md> -o <out.html>   resolve every citation and write one self-contained file
   check  <doc.md>                 resolve citations only; print each failure
+
+Options:
+  --style <name>   reading surface: ${Object.keys(SKINS).join(", ")} (default ${DEFAULT_SKIN})
 
 Exit codes: 0 ok, 1 the document or its citations failed, 2 wrong usage.`;
 
@@ -27,6 +31,7 @@ async function load(
   path: string,
   err: Write,
   wantHtml: boolean,
+  skin: SkinName = DEFAULT_SKIN,
 ): Promise<Loaded | null> {
   let text: string;
   try {
@@ -54,7 +59,7 @@ async function load(
 
   return {
     citations: resolution.citations.length,
-    html: await renderDocument(doc, resolution, { contextLines: CONTEXT_LINES }),
+    html: await renderDocument(doc, resolution, { contextLines: CONTEXT_LINES, skin }),
   };
 }
 
@@ -98,7 +103,14 @@ export async function run(argv: string[], out: Write, err: Write): Promise<numbe
       return 2;
     }
 
-    const loaded = await load(path, err, true);
+    const styleFlag = rest.indexOf('--style');
+    const styleName = styleFlag === -1 ? DEFAULT_SKIN : rest[styleFlag + 1];
+    if (styleName === undefined || !isSkinName(styleName)) {
+      err(`unknown style '${styleName ?? ''}'; choose one of ${Object.keys(SKINS).join(', ')}`);
+      return 2;
+    }
+
+    const loaded = await load(path, err, true, styleName);
     // Nothing is written unless every citation resolved.
     if (!loaded?.html) return 1;
 

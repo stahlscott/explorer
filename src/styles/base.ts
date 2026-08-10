@@ -1,0 +1,261 @@
+/**
+ * Layout and code mechanics, shared by every skin. Skins set the tokens and the
+ * citation treatment; nothing here picks a colour.
+ *
+ * Two measures on purpose. Prose sits at roughly 68 characters, which is where
+ * it reads; code gets a wider column, because a wrapped line of TypeScript is
+ * harder to follow than a wide one. Tables get the wide column too — the
+ * core/support table was unreadable squeezed into the prose measure.
+ */
+export const BASE_STYLE = `
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-prose);
+  font-size: var(--size-prose);
+  line-height: 1.65;
+  text-rendering: optimizeLegibility;
+}
+main {
+  max-width: var(--measure-wide);
+  margin: 0 auto;
+  padding: 3.5rem 1.25rem 7rem;
+}
+main > * {
+  max-width: var(--measure-text);
+  margin-left: auto;
+  margin-right: auto;
+}
+main > figure.cite,
+main > .sketch,
+main > table,
+main > header {
+  max-width: var(--measure-wide);
+}
+
+h1, h2, h3 { font-family: var(--font-head); }
+h1 {
+  font-size: var(--size-h1);
+  line-height: 1.15;
+  letter-spacing: -.02em;
+  margin: 0 0 .6rem;
+  font-weight: var(--weight-head);
+}
+h2 {
+  font-size: var(--size-h2);
+  line-height: 1.2;
+  letter-spacing: -.015em;
+  margin: 3.5rem 0 1rem;
+  font-weight: var(--weight-head);
+}
+h3 { font-size: var(--size-h3); margin: 2.25rem 0 .6rem; font-weight: var(--weight-head); }
+p { margin: 0 0 1.15rem; }
+a { color: var(--accent); text-underline-offset: 2px; }
+strong { font-weight: 650; }
+ul, ol { padding-left: 1.3rem; margin: 0 0 1.15rem; }
+li { margin-bottom: .45rem; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
+
+header { padding-bottom: 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--rule); }
+.question {
+  color: var(--ink-soft);
+  font-size: 1.02em;
+  margin: 0 0 1.1rem;
+  max-width: var(--measure-text);
+}
+ul.pins {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: .74rem;
+  color: var(--ink-soft);
+  display: grid;
+  gap: .3rem;
+}
+ul.pins li { display: flex; gap: .55rem; align-items: baseline; flex-wrap: wrap; margin: 0; }
+.pin-id { font-weight: 700; color: var(--ink); }
+.pin-repo { color: var(--ink-soft); }
+.pin-sha { font-size: .68rem; color: var(--ink-faint); background: none; padding: 0; }
+.pin-base { color: var(--ink-faint); }
+.pin-pr { font-weight: 600; text-decoration: none; }
+.pin-pr:hover { text-decoration: underline; }
+
+blockquote {
+  margin: 1.2rem 0;
+  padding: .1rem 0 .1rem 1.1rem;
+  border-left: 2px solid var(--rule);
+  color: var(--ink-soft);
+}
+table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1.2rem auto 1.8rem;
+  font-family: var(--font-ui);
+  font-size: .82rem;
+  line-height: 1.5;
+}
+th, td {
+  border-bottom: 1px solid var(--rule);
+  padding: .45rem .7rem .45rem 0;
+  text-align: left;
+  vertical-align: top;
+}
+th {
+  font-weight: 600;
+  color: var(--ink-faint);
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  border-bottom-color: var(--ink-faint);
+}
+td:first-child { width: 46%; }
+td code { overflow-wrap: anywhere; background: none; padding: 0; font-size: .95em; }
+
+/* No side padding: a chip's padding reads as a word space, which puts a phantom
+   gap before the comma in a phrase like "packages/ui, which". */
+code {
+  font-family: var(--font-mono);
+  font-size: .86em;
+  background: var(--wash);
+  padding: .1em 0;
+  border-radius: 2px;
+  box-decoration-break: clone;
+}
+
+/* --- code mechanics, identical in every skin ----------------------------- */
+pre.shiki { margin: 0; background: transparent !important; }
+pre.shiki code { background: none; padding: 0; font-size: inherit; white-space: normal; }
+.cite-code, .sketch { overflow: hidden; }
+.cite pre.shiki, .sketch pre.shiki {
+  font-size: var(--size-code);
+  line-height: 1.6;
+  font-family: var(--font-mono);
+}
+
+/* Shiki separates line spans with real newlines. Under white-space:pre those
+   newlines keep their own line boxes, so a hidden context line would still
+   occupy height. Collapse whitespace on the container, restore it per line.
+   Wrap rather than scroll: a scrolled-away line is a line the reader cannot
+   see, which is the one thing a citation may never be, and it would be lost
+   in print. The left pad gives wrapped runs a hanging indent. */
+.line {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  padding-left: 3.4rem;
+  position: relative;
+  min-height: 1.6em;
+}
+.line::before {
+  content: attr(data-line);
+  position: absolute;
+  left: 0;
+  width: 2.6rem;
+  text-align: right;
+  color: var(--ink-faint);
+  opacity: .6;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+figure.cite:not([data-expanded]) .line.ctx { display: none; }
+figure.cite[data-expanded] .line.ctx { opacity: .45; }
+
+/* --- affordances --------------------------------------------------------- */
+.cite-head { font-family: var(--font-mono); font-size: .72rem; }
+.cite-where { overflow-wrap: anywhere; min-width: 0; }
+.cite-where b { color: var(--ink); font-weight: 700; }
+.cite-lines { color: var(--ink-faint); white-space: nowrap; }
+button.cite-more, button.ask, a.cite-link {
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  color: var(--ink-faint);
+  background: none;
+  border: 0;
+  padding: .1rem .25rem;
+  cursor: pointer;
+  text-decoration: none;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+button.cite-more:hover, button.ask:hover, a.cite-link:hover {
+  color: var(--ink);
+  background: var(--wash);
+}
+h1 .ask, h2 .ask, h3 .ask {
+  margin-left: .5rem;
+  vertical-align: middle;
+  opacity: 0;
+  transition: opacity .12s;
+}
+h1:hover .ask, h2:hover .ask, h3:hover .ask, .ask:focus-visible { opacity: 1; }
+
+/* --- author-written code, deliberately unlike a citation ----------------- */
+.sketch {
+  margin: 1.6rem auto;
+  border: 1px dashed var(--ink-faint);
+  border-radius: 4px;
+  background: var(--wash);
+  position: relative;
+}
+.sketch-tag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-family: var(--font-mono);
+  font-size: .6rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: .25rem .55rem;
+}
+.sketch pre.shiki { padding: .8rem 0; }
+.sketch .line { padding-left: 1rem; }
+.sketch .line::before { content: none; }
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: .78rem;
+  padding: .45rem .9rem;
+  border-radius: 999px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .18);
+}
+
+@media (max-width: 46rem) {
+  main { padding: 2rem 1rem 4rem; }
+  .line { padding-left: 2.8rem; }
+  .line::before { width: 2.1rem; }
+  td:first-child { width: 42%; }
+}
+
+@media print {
+  html { font-size: 10.5pt; }
+  body { background: #fff; color: #000; }
+  main { max-width: none; padding: 0; }
+  button.cite-more, button.ask, a.cite-link, .toast { display: none !important; }
+  figure.cite, .sketch, table { break-inside: avoid; }
+  h2, h3 { break-after: avoid; }
+  .shiki, .shiki span { color: var(--shiki-light) !important; }
+}
+`;
+
+/** Shiki writes both variables on every token; the media query picks one. */
+export const SHIKI_THEME_SWITCH = `
+@media (prefers-color-scheme: dark) {
+  .shiki span { color: var(--shiki-dark); }
+}
+@media (prefers-color-scheme: light) {
+  .shiki span { color: var(--shiki-light); }
+}
+`;

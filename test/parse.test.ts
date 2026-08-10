@@ -22,6 +22,7 @@ describe('parseDocument', () => {
         path: '~/work/mobileweb',
         base: null,
         head: 'master',
+        prs: [],
       },
     ]);
   });
@@ -173,5 +174,35 @@ sources:
   it('rejects a citation whose range runs backwards', () => {
     expect(() => parseDocument(`${FRONT_MATTER}\n:::cite web src/a.ts:41-34\n:::\n`))
       .toThrow(/41-34/);
+  });
+});
+
+describe('parseDocument pull requests', () => {
+  it('accepts a list of pull requests on a source', () => {
+    const doc = parseDocument(`---
+title: Example
+sources:
+  - id: web
+    path: ~/work/mobileweb
+    head: master
+    prs: [12800, 12805]
+---
+`);
+
+    expect(doc.sources[0]!.prs).toEqual([12800, 12805]);
+  });
+
+  it('accepts a single pull request written as a scalar', () => {
+    const doc = parseDocument(`---
+title: Example
+sources:
+  - id: api
+    path: ~/work/styleseat
+    head: master
+    pr: 10095
+---
+`);
+
+    expect(doc.sources[0]!.prs).toEqual([10095]);
   });
 });

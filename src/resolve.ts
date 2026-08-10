@@ -17,6 +17,12 @@ export interface ResolvedCitation {
   before: string[];
   after: string[];
   totalLines: number;
+  /**
+   * Every line of the file at the pinned sha. The renderer highlights the whole
+   * file and slices, because a grammar started mid-file mis-reads any excerpt
+   * that opens on a closing delimiter.
+   */
+  fileLines: string[];
 }
 
 export type FailureCode =
@@ -157,6 +163,7 @@ export function resolveDocument(doc: Doc, options: ResolveOptions = {}): Resolut
       before: lines.slice(Math.max(0, block.start - 1 - contextLines), block.start - 1),
       after: lines.slice(block.end, Math.min(lines.length, block.end + contextLines)),
       totalLines: lines.length,
+      fileLines: lines,
     });
   }
 
