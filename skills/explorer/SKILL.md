@@ -15,6 +15,18 @@ into the document — you emit a path and a line range, and the tool fetches it.
 fabrication from the problem, and leaves you the only job that was ever hard: deciding what
 to say and in what order.
 
+Three questions decide what matters. Rank what you find by which one it answers:
+
+1. **Does the code do what it claims?** The claim is whatever is written down — a pull request
+   body, a function name, a docstring, a comment that has outlived its code.
+2. **Does it serve what depends on it?** The thing it was built for, or the callers that
+   already exist and have to live with it.
+3. **Is this how it should be done, given what already exists?** See step 6.
+
+A defect that a linter, a type checker, or an automated reviewer would catch ranks below all
+three. That layer is covered elsewhere now. What a reader cannot get anywhere else is the
+judgement, and these three questions are what the judgement is about.
+
 ## When to use
 
 - A stack of pull requests where something changes mid-stack and is invisible in review.
@@ -27,7 +39,7 @@ quoting the whole file.
 
 ## The procedure
 
-Order matters. Steps 2 to 4 come before any depth-first reading, and steps 5 and 7 are
+Order matters. Steps 2 to 4 come before any depth-first reading, and steps 5 and 8 are
 deliberately not adjacent.
 
 1. **Pin the sources, then run `explorer pin`.** For each repo, find the ref that holds the
@@ -82,23 +94,40 @@ deliberately not adjacent.
 
 5. **Read the code, not the diffs.** Diffs show what moved; they hide what the moved code
    now does. Open the files.
-6. **Read the test names, not the test bodies.**
+
+6. **Find the other implementations of this idea.** Before describing anything as new, look
+   for what already does the job. `git log -S<concept>` finds when the idea arrived and what
+   it replaced; grep by the vocabulary the code uses, not by file names, since a second
+   implementation rarely shares a naming convention with the first. (`-S` matches case
+   exactly: `-SinvitedClients` finds the commit, `-Sinvitedclients` finds nothing and says
+   nothing. A silent empty result is what a near-miss looks like, so search a string you know
+   is there first and confirm the command finds it before trusting an empty one.)
+
+   Three outcomes, each worth a sentence. **Nothing exists** — say so; the absence is context.
+   **Something exists and was extended** — name it, so the reader has the lineage. **Something
+   exists and was not used, or exists twice and both are live** — that is a finding, and
+   usually the most consequential one available, because it is a decision rather than a defect.
+
+   Search from the code's own vocabulary, not the pull request's, which you have not read yet.
+   A reader who has to ask "was there prior art?" got a document that stopped one search short.
+
+7. **Read the test names, not the test bodies.**
    `git show <sha>:<file> | grep -nE "^[[:space:]]*(it|test|def test)"`. The names are a
    written record of what the author believed mattered, and the gaps between them are usually
    the better finding. (`git grep -E` does not understand `\s`; use `[[:space:]]`.)
-7. **Read the PR prose last.** It is claimed intent, not evidence. Reading it first tells you
+8. **Read the PR prose last.** It is claimed intent, not evidence. Reading it first tells you
    what to see. Reading it last lets you notice where it and the code disagree — which is
    often the most valuable sentence in the document.
-8. **Hunt absences on purpose.** The strongest findings are things that are *not* there: no
+9. **Hunt absences on purpose.** The strongest findings are things that are *not* there: no
    analytics call, no test for a path, no reader of a flag. Absence cannot be cited, so it
    must be searched for — and the search stated. See Claiming an absence.
-9. **Draft against the budget**, in the shape below.
-10. **`explorer check <doc.md>`** until it exits 0, then **check your own captions**, then
+10. **Draft against the budget**, in the shape below.
+11. **`explorer check <doc.md>`** until it exits 0, then **check your own captions**, then
     **read the whole thing cold.** `check` proves the code is real and says nothing about the
     sentence beside it. A count you quote from a diff — lines added, lines removed, files
     touched — is a claim; re-run the command before you ship it. If you would not send it to
     a colleague, it is not done.
-11. **Render it, and hand over the link.**
+12. **Render it, and hand over the link.**
     `explorer render <doc.md> -o <out.html> --open`. The artifact is the deliverable, not the
     markdown. End your reply with the `file://` URL the command printed, on its own line, so
     it is one click away. A reader who has to reconstruct the path will read your summary
@@ -147,6 +176,9 @@ When you need to cut, cut from the bottom.
   surprising about them.
 - **Rank by surprise, not by size.** Two lines that change a shared contract outrank eight
   hundred lines of scaffolding.
+- **A decision outranks a defect.** The most consequential thing is usually a choice someone
+  made — a second implementation of something that already existed, a shared contract changed
+  in passing — not a bug. Bugs have owners and tooling. Choices only have readers.
 - **Write dry.** Short sentences, active voice, simple tenses, one idea per sentence. Connective
   flourishes — "together they are a trap", "everything below is about the seams" — carry no
   information and read as filler. State the finding and stop.
@@ -223,6 +255,9 @@ part 8.
 | Present a comment's content as your own finding | Attribute it, and file it on the record |
 | Write a caption asserting an order or a cause | Read it back against the lines it sits beside |
 | Stop at "it is not in the registry" | Open the consumer; report what the absence costs |
+| Call something new without looking for the old one | Search the repo's own vocabulary; existing-and-unused is the finding |
+| Rank a lint-level defect above a design choice | That layer is covered; rank by the three questions |
+| Leave the reader to reconstruct the artifact's path | End with the `file://` URL on its own line |
 
 ## Format and tooling
 
