@@ -569,3 +569,61 @@ sources:
     expect(out).toContain('prefers-color-scheme: dark');
   });
 });
+
+describe('linked file references', () => {
+  const TREE = {
+    'app/scripts/api/FeatureFeedback.ts': numberedLines(6),
+    'docs/notes.md': numberedLines(6),
+  };
+
+  function docFor(repoPath: string, body: string): string {
+    return `---
+title: Fixture
+sources:
+  - id: web
+    repo: styleseat/mobileweb
+    path: ${repoPath}
+    head: main
+---
+${body}`;
+  }
+
+  it('links a named file to the blob at the pinned sha', async () => {
+    const repo = makeRepo(TREE);
+    const out = await render(docFor(repo.path, 'Read `web api/FeatureFeedback.ts` first.\n'));
+
+    expect(out).toContain(
+      `href="https://github.com/styleseat/mobileweb/blob/${repo.sha}/app/scripts/api/FeatureFeedback.ts"`,
+    );
+  });
+
+  it('shows the path as written and names the full path in the title', async () => {
+    const repo = makeRepo(TREE);
+    const out = await render(docFor(repo.path, 'Read `web api/FeatureFeedback.ts` first.\n'));
+    const link = out.match(/<a class="file-ref"[^>]*>[\s\S]*?<\/a>/)![0];
+
+    expect(link).toContain('web api/FeatureFeedback.ts');
+    expect(link).toContain('title="app/scripts/api/FeatureFeedback.ts');
+  });
+
+  it('leaves prose code untouched when it names no file', async () => {
+    const repo = makeRepo(TREE);
+    const out = await render(docFor(repo.path, 'The `addValues` effect matters.\n'));
+
+    const body = out.slice(out.indexOf('<main>'));
+    expect(body).toContain('<code>addValues</code>');
+    expect(body).not.toContain('file-ref');
+  });
+
+  it('links every row of a file table', async () => {
+    const repo = makeRepo(TREE);
+    const out = await render(
+      docFor(
+        repo.path,
+        '| file | why |\n|---|---|\n| `web api/FeatureFeedback.ts` | The wire contract. |\n| `web docs/notes.md` | The read path. |\n',
+      ),
+    );
+
+    expect([...out.matchAll(/class="file-ref"/g)]).toHaveLength(2);
+  });
+});

@@ -39,6 +39,13 @@ The artifact contains inline CSS and JavaScript only and requests nothing off di
   assertion is about what a reader sees.
 - **Cited code wraps rather than scrolls.** A horizontally scrolled line is a line the reader
   cannot see, which is the one thing a citation may never be, and it would be lost in print.
+- **File names in prose are resolved, not authored.** A code span written as
+  `<source-id> <path>` is looked up in the tree at the pinned sha and linked by the tool, so a
+  document's file list carries the same guarantee its citations do. Paths may be abbreviated
+  because a full path is unreadable in a table; the fragment must match exactly one file, and
+  an explicit reference that matches none or several fails the build. A bare path (single-source
+  documents only, and only with a slash in it) links when it resolves and is left alone
+  otherwise — prose is not a claim about a path.
 - **A project-level `.npmrc` points at the public registry**, because the global one points at
   StyleSeat's CodeArtifact. Nothing here is a work dependency.
 

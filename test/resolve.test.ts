@@ -179,3 +179,167 @@ sources:
     expect(resolution.failures).toHaveLength(1);
   });
 });
+
+describe('file references in prose', () => {
+  const TREE = {
+    'app/scripts/modules/provider/FeatureFeedback/types.ts': numberedLines(5),
+    'app/scripts/api/FeatureFeedback.ts': numberedLines(5),
+    'packages/ui/src/theme/types.ts': numberedLines(5),
+    'docs/notes.md': numberedLines(5),
+  };
+
+  function doc(repoPath: string, body: string, id = 'web'): string {
+    return `---
+title: Fixture
+sources:
+  - id: ${id}
+    repo: styleseat/mobileweb
+    path: ${repoPath}
+    head: main
+  - id: api
+    repo: styleseat/styleseat
+    path: ${repoPath}
+    head: main
+---
+${body}`;
+  }
+
+  it('resolves an exact path named with its source id', () => {
+    const repo = makeRepo(TREE);
+    const parsed = parseDocument(doc(repo.path, 'See `web docs/notes.md` for the read path.\n'));
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.failures).toEqual([]);
+    expect(resolution.references.get('web docs/notes.md')?.path).toBe('docs/notes.md');
+  });
+
+  it('resolves an abbreviated path when exactly one file ends with it', () => {
+    const repo = makeRepo(TREE);
+    const parsed = parseDocument(doc(repo.path, 'Read `web api/FeatureFeedback.ts`.\n'));
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.references.get('web api/FeatureFeedback.ts')?.path).toBe(
+      'app/scripts/api/FeatureFeedback.ts',
+    );
+  });
+
+  it('fails when an abbreviated path matches more than one file', () => {
+    const repo = makeRepo(TREE);
+    const parsed = parseDocument(doc(repo.path, 'Read `web types.ts`.\n'));
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.failures[0]!.code).toBe('ambiguous-reference');
+    expect(resolution.failures[0]!.message).toContain('types.ts');
+    expect(resolution.failures[0]!.message).toContain('2');
+  });
+
+  it('fails when a named path is not in the tree at all', () => {
+    const repo = makeRepo(TREE);
+    const parsed = parseDocument(doc(repo.path, 'Read `web nope/gone.ts`.\n'));
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.failures[0]!.code).toBe('missing-reference');
+    expect(resolution.failures[0]!.message).toContain('nope/gone.ts');
+  });
+
+  it('leaves prose that is not a file reference alone', () => {
+    const repo = makeRepo(TREE);
+    const parsed = parseDocument(
+      doc(repo.path, 'The `IS NOT NULL AND <> \'\'` filter and `addValues` both matter.\n'),
+    );
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.failures).toEqual([]);
+    expect(resolution.references.size).toBe(0);
+  });
+
+  it('ignores a reference inside a fenced block', () => {
+    const repo = makeRepo(TREE);
+    const parsed = parseDocument(
+      doc(repo.path, 'Example:\n\n```\n`web nope/gone.ts`\n```\n'),
+    );
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.failures).toEqual([]);
+  });
+});
+
+describe('bare file references in a single-source document', () => {
+  function doc(repoPath: string, body: string): string {
+    return `---
+title: Fixture
+sources:
+  - id: web
+    repo: styleseat/mobileweb
+    path: ${repoPath}
+    head: main
+---
+${body}`;
+  }
+
+  const TREE = {
+    'app/scripts/store/UserState/UserState.model.ts': numberedLines(5),
+    'app/scripts/hooks/useUserStateRedux.ts': numberedLines(5),
+    'app/scripts/store/ProviderGoals.model.ts': numberedLines(5),
+  };
+
+  it('resolves a bare path when the document declares one source', () => {
+    const repo = makeRepo(TREE);
+    const parsed = parseDocument(doc(repo.path, 'See `store/UserState/UserState.model.ts`.\n'));
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.failures).toEqual([]);
+    expect(resolution.references.get('store/UserState/UserState.model.ts')?.path).toBe(
+      'app/scripts/store/UserState/UserState.model.ts',
+    );
+  });
+
+  it('never fails on a bare reference, because prose is not a claim about a path', () => {
+    const repo = makeRepo(TREE);
+    const parsed = parseDocument(
+      doc(repo.path, 'The `ProviderGoals.model` selector and `some/thing/absent.ts`.\n'),
+    );
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.failures).toEqual([]);
+    expect(resolution.references.size).toBe(0);
+  });
+
+  it('leaves a bare symbol alone even when a file shares its name', () => {
+    const repo = makeRepo(TREE);
+    const parsed = parseDocument(doc(repo.path, 'The `refreshUserState` effect.\n'));
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.references.size).toBe(0);
+  });
+
+  it('requires the source id when a document declares several sources', () => {
+    const repo = makeRepo(TREE);
+    const parsed = parseDocument(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+  - id: api
+    path: ${repo.path}
+    head: main
+---
+See \`hooks/useUserStateRedux.ts\`.
+`);
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.references.size).toBe(0);
+    expect(resolution.failures).toEqual([]);
+  });
+});

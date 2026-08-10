@@ -47,6 +47,12 @@ export const PAGE_SCRIPT = `
       for (var i = 0; i < targets.length; i += 1) {
         if (targets[i].heading.getBoundingClientRect().top <= line) found = targets[i];
       }
+
+      // A short final section never climbs to the reading line, because there
+      // is no document left to scroll. Reaching the end means being in it.
+      var remaining =
+        document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+      if (remaining <= 2) found = targets[targets.length - 1];
       if (found === current) return;
       if (current) current.link.removeAttribute('aria-current');
       found.link.setAttribute('aria-current', 'true');

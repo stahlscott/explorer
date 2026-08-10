@@ -36,7 +36,20 @@ export type FailureCode =
   | 'repo-not-found'
   | 'ref-not-found'
   | 'missing-file'
-  | 'range-past-eof';
+  | 'range-past-eof'
+  | 'missing-reference'
+  | 'ambiguous-reference';
+
+/**
+ * A file named in prose as `<source-id> <path>`, resolved to a real path at the
+ * pinned sha. The renderer links these, so a file list in a document carries
+ * the same guarantee a citation does: the tool built the link, not the author.
+ */
+export interface ResolvedReference {
+  text: string;
+  source: ResolvedSource;
+  path: string;
+}
 
 export interface CitationFailure {
   code: FailureCode;
@@ -47,6 +60,8 @@ export interface CitationFailure {
 export interface Resolution {
   sources: ResolvedSource[];
   citations: ResolvedCitation[];
+  /** Keyed by the code span exactly as authored. */
+  references: Map<string, ResolvedReference>;
   failures: CitationFailure[];
 }
 
@@ -100,6 +115,27 @@ function findCheckout(directory: string, sha: string): string | null {
     else if (line.startsWith('HEAD ') && line.slice('HEAD '.length).trim() === sha) return path;
   }
   return null;
+}
+
+/** Inline code spans, skipping fenced regions where they are illustrations. */
+function proseCodeSpans(markdown: string): string[] {
+  const spans: string[] = [];
+  let fence: string | null = null;
+
+  for (const line of markdown.split('\n')) {
+    const fenceMatch = line.match(/^\s*(```+|~~~+)/);
+    if (fenceMatch) {
+      const marker = fenceMatch[1]!;
+      if (fence === null) fence = marker.slice(0, 3);
+      else if (marker.startsWith(fence)) fence = null;
+      continue;
+    }
+    if (fence !== null) continue;
+
+    for (const match of line.matchAll(/`([^`\n]+)`/g)) spans.push(match[1]!);
+  }
+
+  return spans;
 }
 
 function pinSource(source: Source): ResolvedSource | CitationFailure {
@@ -195,5 +231,85 @@ export function resolveDocument(doc: Doc, options: ResolveOptions = {}): Resolut
     });
   }
 
-  return { sources, citations, failures };
+  const references = resolveReferences(doc, byId, failures);
+
+  return { sources, citations, references, failures };
+}
+
+/**
+ * A path may be abbreviated, since a full path is often unreadable in a table.
+ * The fragment must match exactly one file at the pinned sha; anything else is
+ * a failure, because a file list nobody checked is the prose this tool exists
+ * to replace.
+ */
+function resolveReferences(
+  doc: Doc,
+  byId: Map<string, ResolvedSource>,
+  failures: CitationFailure[],
+): Map<string, ResolvedReference> {
+  const references = new Map<string, ResolvedReference>();
+  if (byId.size === 0) return references;
+
+  const trees = new Map<string, string[]>();
+  const treeOf = (source: ResolvedSource): string[] => {
+    let tree = trees.get(source.sha);
+    if (!tree) {
+      try {
+        tree = git(source.directory, ['ls-tree', '-r', '--name-only', source.sha])
+          .split('\n')
+          .filter(Boolean);
+      } catch {
+        tree = [];
+      }
+      trees.set(source.sha, tree);
+    }
+    return tree;
+  };
+
+  const seen = new Set<string>();
+  for (const block of doc.blocks) {
+    if (block.kind !== 'prose') continue;
+
+    for (const span of proseCodeSpans(block.markdown)) {
+      if (seen.has(span)) continue;
+
+      const named = span.match(/^(\S+)[ \t]+(\S+)$/);
+      // A bare path is only unambiguous with one source, and it is prose rather
+      // than a claim, so it links when it resolves and is left alone when it
+      // does not. Requiring a slash keeps symbols like `ProviderGoals.model`
+      // out of it.
+      const bare =
+        !named && byId.size === 1 && /\//.test(span) && !/\s/.test(span) ? span : null;
+
+      const source = named ? byId.get(named[1]!) : [...byId.values()][0];
+      if (!source) continue;
+      if (!named && !bare) continue;
+      seen.add(span);
+
+      const explicit = named !== null;
+      const fragment = named ? named[2]! : bare!;
+      const tree = treeOf(source);
+      const hits = tree.filter(
+        path => path === fragment || path.endsWith(`/${fragment}`),
+      );
+
+      if (hits.length === 1) {
+        references.set(span, { text: span, source, path: hits[0]! });
+      } else if (!explicit) {
+        continue;
+      } else if (hits.length === 0) {
+        failures.push({
+          code: 'missing-reference',
+          message: `${source.id} ${fragment} matches no file at ${source.head}`,
+        });
+      } else {
+        failures.push({
+          code: 'ambiguous-reference',
+          message: `${source.id} ${fragment} matches ${hits.length} files at ${source.head}; name more of the path`,
+        });
+      }
+    }
+  }
+
+  return references;
 }

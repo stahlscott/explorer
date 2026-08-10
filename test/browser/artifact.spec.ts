@@ -487,3 +487,15 @@ test('renders no text that disappears into its own background', async ({ page })
     expect(unreadable, `${skin} has text with almost no contrast`).toEqual([]);
   }
 });
+
+test('highlights the last section once the reader reaches the bottom', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await openOffline(page);
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+
+  // The final heading never climbs to the reading line, because there is not
+  // enough document beneath it to scroll that far.
+  const last = page.locator('.toc a').last();
+  await expect(last).toHaveAttribute('aria-current', 'true');
+});

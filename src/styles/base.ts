@@ -117,6 +117,12 @@ th {
 td:first-child { width: 46%; }
 td code { overflow-wrap: anywhere; background: none; padding: 0; font-size: .95em; }
 
+/* A file the tool resolved, so the link target came from the repository rather
+   than from whoever wrote the sentence. */
+a.file-ref { text-decoration: none; border-bottom: 1px solid var(--rule); }
+a.file-ref:hover { border-bottom-color: var(--accent); }
+a.file-ref code, span.file-ref code { color: inherit; }
+
 /* No side padding: a chip's padding reads as a word space, which puts a phantom
    gap before the comma in a phrase like "packages/ui, which". */
 code {

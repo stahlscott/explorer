@@ -52,7 +52,7 @@ describe('explorer check', () => {
     const code = await run(['check', goodDoc()], io.out, io.err);
 
     expect(code).toBe(0);
-    expect(out.join('\n')).toMatch(/1 citation/);
+    expect(out.join('\n')).toMatch(/1 citation and 0 file references resolved/);
   });
 
   it('exits 1 and prints one compact line per failure', async () => {

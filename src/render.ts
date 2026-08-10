@@ -1,7 +1,12 @@
 import { Marked } from 'marked';
 import type { Highlighter } from 'shiki';
 import type { Doc } from './parse.ts';
-import type { Resolution, ResolvedCitation, ResolvedSource } from './resolve.ts';
+import type {
+  Resolution,
+  ResolvedCitation,
+  ResolvedReference,
+  ResolvedSource,
+} from './resolve.ts';
 import { bundledLanguage, getHighlighter, languageForPath, THEMES } from './highlight.ts';
 import { PAGE_SCRIPT } from './assets.ts';
 import { BASE_STYLE, SHIKI_THEME_SWITCH } from './styles/base.ts';
@@ -197,16 +202,37 @@ function slugify(title: string, taken: Map<string, number>): string {
   return seen === 1 ? base : `${base}-${seen}`;
 }
 
+function referenceLink(reference: ResolvedReference): string {
+  const { source, path, text } = reference;
+  const href = source.repo
+    ? `https://github.com/${source.repo}/blob/${source.sha}/${path}`
+    : null;
+  const title = `${path} at ${source.sha.slice(0, 10)}`;
+  const label = `<code>${escapeHtml(text)}</code>`;
+
+  // Without a repo there is nowhere to point, but the full path is still worth
+  // showing — the author wrote an abbreviation.
+  if (!href) return `<span class="file-ref" title="${escapeHtml(title)}">${label}</span>`;
+  return `<a class="file-ref" href="${escapeHtml(href)}" title="${escapeHtml(title)}">${label}</a>`;
+}
+
 function makeMarkdown(
   highlighter: Highlighter,
   sources: ResolvedSource[],
   sections: Section[],
+  references: Map<string, ResolvedReference>,
 ): Marked {
   const marked = new Marked({ gfm: true });
   const taken = new Map<string, number>();
 
   marked.use({
     renderer: {
+      codespan({ text }) {
+        // `text` is entity-encoded by marked; references never contain markup,
+        // so a plain lookup on the raw span is enough.
+        const reference = references.get(text);
+        return reference ? referenceLink(reference) : `<code>${text}</code>`;
+      },
       code({ text, lang }) {
         const highlighted = highlighter.codeToHtml(text, {
           lang: bundledLanguage(lang ?? 'text'),
@@ -291,7 +317,7 @@ export async function renderDocument(
 ): Promise<string> {
   const highlighter = await getHighlighter();
   const sections: Section[] = [];
-  const markdown = makeMarkdown(highlighter, resolution.sources, sections);
+  const markdown = makeMarkdown(highlighter, resolution.sources, sections, resolution.references);
 
   const byCitation = new Map(resolution.citations.map(c => [c.citation, c]));
   const inlineMarkdown = (text: string) => markdown.parseInline(text) as string;

@@ -21,6 +21,7 @@ Exit codes: 0 ok, 1 the document or its citations failed, 2 wrong usage.`;
 
 interface Loaded {
   citations: number;
+  references: number;
   html?: string;
 }
 
@@ -57,10 +58,13 @@ async function load(
     return null;
   }
 
-  if (!wantHtml) return { citations: resolution.citations.length };
+  if (!wantHtml) {
+    return { citations: resolution.citations.length, references: resolution.references.size };
+  }
 
   return {
     citations: resolution.citations.length,
+    references: resolution.references.size,
     html: await renderDocument(doc, resolution, { contextLines: CONTEXT_LINES, skin, toc }),
   };
 }
@@ -87,7 +91,10 @@ export async function run(argv: string[], out: Write, err: Write): Promise<numbe
     const loaded = await load(path, err, false);
     if (!loaded) return 1;
 
-    out(`${loaded.citations} citation${loaded.citations === 1 ? '' : 's'} resolved`);
+    out(
+      `${loaded.citations} citation${loaded.citations === 1 ? '' : 's'} and ` +
+        `${loaded.references} file reference${loaded.references === 1 ? '' : 's'} resolved`,
+    );
     return 0;
   }
 
@@ -123,7 +130,10 @@ export async function run(argv: string[], out: Write, err: Write): Promise<numbe
       return 1;
     }
 
-    out(`${output} — ${loaded.citations} citation${loaded.citations === 1 ? '' : 's'}`);
+    out(
+      `${output} — ${loaded.citations} citation${loaded.citations === 1 ? '' : 's'}, ` +
+        `${loaded.references} file reference${loaded.references === 1 ? '' : 's'}`,
+    );
     return 0;
   }
 
