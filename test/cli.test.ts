@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
-import { run } from '../src/cli.ts';
+import { fileUrl, openCommand, run } from '../src/cli.ts';
 import { makeRepo, numberedLines } from './helpers/repo.ts';
 
 const execFileAsync = promisify(execFile);
@@ -44,6 +44,81 @@ sources:
 :::
 `);
 }
+
+describe('the rendered artifact is reachable', () => {
+  it('turns a relative output path into an absolute file URL', () => {
+    expect(fileUrl('out/doc.html')).toBe(`file://${join(process.cwd(), 'out/doc.html')}`);
+  });
+
+  it('percent-encodes a space so the whole URL stays clickable', () => {
+    expect(fileUrl('/tmp/my docs/a.html')).toBe('file:///tmp/my%20docs/a.html');
+  });
+
+  it('picks the platform opener', () => {
+    expect(openCommand('darwin')).toBe('open');
+    expect(openCommand('win32')).toBe('start');
+    expect(openCommand('linux')).toBe('xdg-open');
+  });
+
+  it('prints a file URL, not the bare path, so a terminal can open it', async () => {
+    const { io, out } = capture();
+    const output = join(mkdtempSync(join(tmpdir(), 'explorer2-out-')), 'doc.html');
+
+    const code = await run(['render', goodDoc(), '-o', output], io.out, io.err);
+
+    expect(code).toBe(0);
+    expect(out.join('\n')).toContain(`file://${output}`);
+  });
+
+  it('launches the opener with the artifact when --open is given', async () => {
+    const { io } = capture();
+    const output = join(mkdtempSync(join(tmpdir(), 'explorer2-out-')), 'doc.html');
+    const launched: string[] = [];
+
+    const code = await run(['render', goodDoc(), '-o', output, '--open'], io.out, io.err, path =>
+      launched.push(path),
+    );
+
+    expect(code).toBe(0);
+    expect(launched).toEqual([output]);
+  });
+
+  it('does not launch anything without --open', async () => {
+    const { io } = capture();
+    const output = join(mkdtempSync(join(tmpdir(), 'explorer2-out-')), 'doc.html');
+    const launched: string[] = [];
+
+    await run(['render', goodDoc(), '-o', output], io.out, io.err, path => launched.push(path));
+
+    expect(launched).toEqual([]);
+  });
+
+  it('never launches an artifact it refused to write', async () => {
+    const repo = makeRepo({ 'src/x.ts': numberedLines(10) });
+    const doc = writeDoc(`---
+title: Broken
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+:::cite src/x.ts:50-60
+:::
+`);
+    const { io } = capture();
+    const launched: string[] = [];
+
+    const code = await run(
+      ['render', doc, '-o', join(tmpdir(), 'never.html'), '--open'],
+      io.out,
+      io.err,
+      path => launched.push(path),
+    );
+
+    expect(code).toBe(1);
+    expect(launched).toEqual([]);
+  });
+});
 
 describe('explorer check', () => {
   it('exits 0 and reports the count when every citation resolves', async () => {

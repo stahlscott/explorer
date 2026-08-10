@@ -98,6 +98,11 @@ deliberately not adjacent.
     sentence beside it. A count you quote from a diff — lines added, lines removed, files
     touched — is a claim; re-run the command before you ship it. If you would not send it to
     a colleague, it is not done.
+11. **Render it, and hand over the link.**
+    `explorer render <doc.md> -o <out.html> --open`. The artifact is the deliverable, not the
+    markdown. End your reply with the `file://` URL the command printed, on its own line, so
+    it is one click away. A reader who has to reconstruct the path will read your summary
+    instead of the document — and the summary is the part with no citations in it.
 
 ## What the document is
 
@@ -224,7 +229,8 @@ part 8.
 `explorer pin <doc.md>` records each source's current SHA in the front matter.
 `explorer check <doc.md>` resolves citations and file references; exit 0 means every claim
 about a path is true. `explorer render <doc.md> -o <out.html>` writes the artifact and refuses
-if anything fails. `--style panel` (default) or `terminal`.
+if anything fails; it prints an absolute `file://` URL, and `--open` opens it. `--style panel`
+(default) or `terminal`.
 
 Syntax, front matter, and the failure messages are in
 [references/format.md](references/format.md).

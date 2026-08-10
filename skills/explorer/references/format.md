@@ -88,7 +88,8 @@ Exit 2 means wrong usage, not a bad document.
 
 One self-contained HTML file. No network at render time and none at view time: highlighting is
 pre-rendered, styles and script are inline. It opens from `file://`, prints, and survives
-being emailed.
+being emailed. `render` prints the artifact's absolute `file://` URL so a terminal can open it,
+and `--open` opens it directly.
 
 Each citation carries `github` (a permalink at the pinned SHA), `editor` (only when some
 checkout is actually at that SHA, so the link opens the bytes the document shows), and `ask`,

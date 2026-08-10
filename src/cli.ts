@@ -1,11 +1,14 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { parseDocument } from './parse.ts';
 import { resolveDocument } from './resolve.ts';
 import { renderDocument } from './render.ts';
 import { DEFAULT_SKIN, isSkinName, SKINS } from './styles/skins.ts';
 
 type Write = (line: string) => void;
+type Launch = (path: string) => void;
 
 const CONTEXT_LINES = 12;
 
@@ -18,8 +21,29 @@ const USAGE = `usage: explorer <command> [options]
 Options:
   --style <name>   reading surface: ${Object.keys(SKINS).join(", ")} (default ${DEFAULT_SKIN})
   --no-toc         leave out the section nav
+  --open           open the artifact when it is written
 
 Exit codes: 0 ok, 1 the document or its citations failed, 2 wrong usage.`;
+
+/**
+ * An absolute `file://` URL, because the point of rendering is that someone
+ * reads it: a terminal linkifies this, and a relative path is a dead end for
+ * whoever the document was written for.
+ */
+export function fileUrl(path: string): string {
+  return pathToFileURL(resolve(path)).href;
+}
+
+export function openCommand(platform: string): string {
+  if (platform === 'darwin') return 'open';
+  if (platform === 'win32') return 'start';
+  return 'xdg-open';
+}
+
+function launchDefault(path: string): void {
+  const command = openCommand(process.platform);
+  execFileSync(command, [path], { stdio: 'ignore', shell: command === 'start' });
+}
 
 interface Loaded {
   citations: number;
@@ -146,7 +170,12 @@ function pin(path: string, out: Write, err: Write): number {
   return 0;
 }
 
-export async function run(argv: string[], out: Write, err: Write): Promise<number> {
+export async function run(
+  argv: string[],
+  out: Write,
+  err: Write,
+  launch: Launch = launchDefault,
+): Promise<number> {
   const [command, ...rest] = argv;
 
   if (command === undefined || command === '--help' || command === '-h' || command === 'help') {
@@ -208,9 +237,19 @@ export async function run(argv: string[], out: Write, err: Write): Promise<numbe
     }
 
     out(
-      `${output} — ${loaded.citations} citation${loaded.citations === 1 ? '' : 's'}, ` +
+      `${fileUrl(output)} — ${loaded.citations} citation${loaded.citations === 1 ? '' : 's'}, ` +
         `${loaded.references} file reference${loaded.references === 1 ? '' : 's'}`,
     );
+
+    if (rest.includes('--open')) {
+      try {
+        launch(resolve(output));
+      } catch (error) {
+        // The artifact is written and its URL is printed; failing to open it is
+        // an inconvenience, not a failed render.
+        err(`could not open ${output}: ${(error as Error).message}`);
+      }
+    }
     return 0;
   }
 
