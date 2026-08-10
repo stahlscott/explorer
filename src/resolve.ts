@@ -38,7 +38,8 @@ export type FailureCode =
   | 'missing-file'
   | 'range-past-eof'
   | 'missing-reference'
-  | 'ambiguous-reference';
+  | 'ambiguous-reference'
+  | 'moved-head';
 
 /**
  * A file named in prose as `<source-id> <path>`, resolved to a real path at the
@@ -151,7 +152,20 @@ function pinSource(source: Source): ResolvedSource | CitationFailure {
   }
 
   try {
-    const sha = git(directory, ['rev-parse', '--verify', `${source.head}^{commit}`]).trim();
+    const head = git(directory, ['rev-parse', '--verify', `${source.head}^{commit}`]).trim();
+
+    // A recorded sha wins, and a branch that has moved off it is a failure
+    // rather than a silent re-point: the prose was written against the old tree.
+    if (source.sha && source.sha !== head) {
+      return {
+        code: 'moved-head',
+        message:
+          `${source.id} was pinned to ${source.sha.slice(0, 10)} but ${source.head} is now ` +
+          `${head.slice(0, 10)}; re-read the citations, then repin with 'explorer pin'`,
+      };
+    }
+
+    const sha = source.sha ?? head;
     return { ...source, directory, sha, checkout: findCheckout(directory, sha) };
   } catch {
     return {

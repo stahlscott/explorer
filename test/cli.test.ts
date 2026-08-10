@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -213,5 +213,83 @@ ${testCase.body}
     expect(messages[1]).toContain('src/gone.ts');
     expect(messages[2]).toContain("unknown source 'nope'");
     expect(messages[3]).toContain('no-such-ref');
+  });
+});
+
+describe('explorer pin', () => {
+  it('writes the resolved sha into the front matter', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(10) });
+    const path = writeDoc(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+:::cite src/a.ts:1-2
+:::
+`);
+    const { io, out } = capture();
+
+    const code = await run(['pin', path], io.out, io.err);
+
+    expect(code).toBe(0);
+    expect(readFileSync(path, 'utf8')).toContain(`sha: ${repo.sha}`);
+    expect(out.join('\n')).toContain('web');
+  });
+
+  it('updates a stale sha and says what moved', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(10) });
+    const stale = repo.sha;
+    writeFileSync(`${repo.path}/src/a.ts`, numberedLines(30));
+    execFileSync('git', ['-C', repo.path, 'commit', '--quiet', '-am', 'moved']);
+    const moved = execFileSync('git', ['-C', repo.path, 'rev-parse', 'HEAD'], {
+      encoding: 'utf8',
+    }).trim();
+
+    const path = writeDoc(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+    sha: ${stale}
+---
+:::cite src/a.ts:1-2
+:::
+`);
+    const { io, out } = capture();
+
+    expect(await run(['pin', path], io.out, io.err)).toBe(0);
+
+    const after = readFileSync(path, 'utf8');
+    expect(after).toContain(`sha: ${moved}`);
+    expect(after).not.toContain(stale);
+    expect(out.join('\n')).toContain(stale.slice(0, 10));
+  });
+
+  it('refuses to render a document whose branch has moved', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(10) });
+    const stale = repo.sha;
+    writeFileSync(`${repo.path}/src/a.ts`, numberedLines(30));
+    execFileSync('git', ['-C', repo.path, 'commit', '--quiet', '-am', 'moved']);
+
+    const path = writeDoc(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+    sha: ${stale}
+---
+:::cite src/a.ts:1-2
+:::
+`);
+    const out = join(mkdtempSync(join(tmpdir(), 'explorer2-moved-')), 'a.html');
+    const { io, err } = capture();
+
+    expect(await run(['render', path, '-o', out], io.out, io.err)).toBe(1);
+    expect(existsSync(out)).toBe(false);
+    expect(err.join('\n')).toContain('explorer pin');
   });
 });

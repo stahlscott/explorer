@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { parseDocument } from './parse.ts';
 import { resolveDocument } from './resolve.ts';
@@ -12,6 +13,7 @@ const USAGE = `usage: explorer <command> [options]
 
   render <doc.md> -o <out.html>   resolve every citation and write one self-contained file
   check  <doc.md>                 resolve citations only; print each failure
+  pin    <doc.md>                 record each source's current sha in the front matter
 
 Options:
   --style <name>   reading surface: ${Object.keys(SKINS).join(", ")} (default ${DEFAULT_SKIN})
@@ -67,6 +69,81 @@ async function load(
     references: resolution.references.size,
     html: await renderDocument(doc, resolution, { contextLines: CONTEXT_LINES, skin, toc }),
   };
+}
+
+/**
+ * Rewrites each source's `sha:` to whatever its head ref points at now. Pinning
+ * is a separate, deliberate act: a document whose branch moved is reporting on a
+ * tree that no longer exists, and repinning without re-reading the citations
+ * just makes the prose wrong quietly instead of loudly.
+ */
+function pin(path: string, out: Write, err: Write): number {
+  let text: string;
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch {
+    err(`cannot read ${path}`);
+    return 1;
+  }
+
+  let doc;
+  try {
+    doc = parseDocument(text);
+  } catch (error) {
+    err(`${path}: ${(error as Error).message}`);
+    return 1;
+  }
+
+  const lines = text.split('\n');
+  let changed = 0;
+
+  for (const source of doc.sources) {
+    const directory = source.path.startsWith('~/')
+      ? `${process.env.HOME}/${source.path.slice(2)}`
+      : source.path;
+
+    let head: string;
+    try {
+      head = execFileSync('git', ['-C', directory, 'rev-parse', '--verify', `${source.head}^{commit}`], {
+        encoding: 'utf8',
+      }).trim();
+    } catch {
+      err(`${source.id} cannot resolve ${source.head} in ${directory}`);
+      return 1;
+    }
+
+    if (source.sha === head) {
+      out(`${source.id} already at ${head.slice(0, 10)}`);
+      continue;
+    }
+
+    // Anchor on the source's own `id:` line so several sources cannot collide.
+    const idLine = lines.findIndex(line => line.trim().replace(/^-\s*/, '') === `id: ${source.id}`);
+    if (idLine === -1) {
+      err(`${source.id} could not be located in the front matter`);
+      return 1;
+    }
+
+    const indent = lines[idLine]!.match(/^\s*(?:-\s*)?/)![0].replace(/-\s*$/, '  ');
+    const existing = lines.findIndex(
+      (line, i) => i > idLine && i < idLine + 12 && /^\s*sha:/.test(line),
+    );
+
+    if (existing !== -1) {
+      out(`${source.id} ${source.sha?.slice(0, 10)} -> ${head.slice(0, 10)}`);
+      lines[existing] = `${indent}sha: ${head}`;
+    } else {
+      out(`${source.id} pinned at ${head.slice(0, 10)}`);
+      const headLine = lines.findIndex(
+        (line, i) => i > idLine && i < idLine + 12 && /^\s*head:/.test(line),
+      );
+      lines.splice((headLine === -1 ? idLine : headLine) + 1, 0, `${indent}sha: ${head}`);
+    }
+    changed += 1;
+  }
+
+  if (changed > 0) writeFileSync(path, lines.join('\n'));
+  return 0;
 }
 
 export async function run(argv: string[], out: Write, err: Write): Promise<number> {
@@ -135,6 +212,15 @@ export async function run(argv: string[], out: Write, err: Write): Promise<numbe
         `${loaded.references} file reference${loaded.references === 1 ? '' : 's'}`,
     );
     return 0;
+  }
+
+  if (command === 'pin') {
+    const path = rest[0];
+    if (path === undefined) {
+      err('pin needs a document: explorer pin <doc.md>');
+      return 2;
+    }
+    return pin(path, out, err);
   }
 
   err(`unknown command '${command}'\n\n${USAGE}`);

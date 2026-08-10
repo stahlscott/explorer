@@ -8,6 +8,12 @@ export interface Source {
   head: string;
   /** Pull requests this source's head covers, for links out of the artifact. */
   prs: number[];
+  /**
+   * The commit this document was written against. A branch name is not a pin:
+   * a stacked branch gets rebased and the same line range then shows different
+   * code beside unchanged prose. When present, drift is a failure.
+   */
+  sha: string | null;
 }
 
 export interface Citation {
@@ -90,6 +96,7 @@ function readSources(frontMatter: Record<string, unknown>): Source[] {
       prs: (Array.isArray(prs) ? prs : prs === undefined ? [] : [prs])
         .map(Number)
         .filter(Number.isInteger),
+      sha: typeof source.sha === 'string' ? source.sha : null,
     };
   });
 }

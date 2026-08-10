@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseDocument } from '../src/parse.ts';
@@ -341,5 +342,103 @@ See \`hooks/useUserStateRedux.ts\`.
 
     expect(resolution.references.size).toBe(0);
     expect(resolution.failures).toEqual([]);
+  });
+});
+
+describe('pinning a source to a recorded sha', () => {
+  it('accepts a recorded sha that still matches the head ref', () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(10) });
+    const parsed = parseDocument(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+    sha: ${repo.sha}
+---
+:::cite src/a.ts:1-2
+:::
+`);
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.failures).toEqual([]);
+    expect(resolution.sources[0]!.sha).toBe(repo.sha);
+  });
+
+  it('fails when the branch has moved away from the recorded sha', () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(10) });
+    const stale = repo.sha;
+    // The branch is rebased or amended, as a stacked branch routinely is.
+    writeFileSync(`${repo.path}/src/a.ts`, numberedLines(40));
+    execFileSync('git', ['-C', repo.path, 'commit', '--quiet', '-am', 'moved']);
+
+    const parsed = parseDocument(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+    sha: ${stale}
+---
+:::cite src/a.ts:1-2
+:::
+`);
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.failures[0]!.code).toBe('moved-head');
+    expect(resolution.failures[0]!.message).toContain(stale.slice(0, 10));
+    expect(resolution.failures[0]!.message).toContain('main');
+  });
+
+  it('reads blobs at the recorded sha, not at the branch tip', () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(10) });
+    const pinned = repo.sha;
+    writeFileSync(`${repo.path}/src/a.ts`, 'rewritten\n'.repeat(10));
+    execFileSync('git', ['-C', repo.path, 'commit', '--quiet', '-am', 'moved']);
+
+    const parsed = parseDocument(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: ${pinned}
+    sha: ${pinned}
+---
+:::cite src/a.ts:3-3
+:::
+`);
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.failures).toEqual([]);
+    expect(resolution.citations[0]!.lines).toEqual(['line 3']);
+  });
+
+  it('reports the head it wanted so the author can repin deliberately', () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(10) });
+    const stale = repo.sha;
+    writeFileSync(`${repo.path}/src/a.ts`, numberedLines(40));
+    execFileSync('git', ['-C', repo.path, 'commit', '--quiet', '-am', 'moved']);
+    const moved = execFileSync('git', ['-C', repo.path, 'rev-parse', 'HEAD'], {
+      encoding: 'utf8',
+    }).trim();
+
+    const parsed = parseDocument(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+    sha: ${stale}
+---
+:::cite src/a.ts:1-2
+:::
+`);
+
+    const resolution = resolveDocument(parsed);
+
+    expect(resolution.failures[0]!.message).toContain(moved.slice(0, 10));
   });
 });

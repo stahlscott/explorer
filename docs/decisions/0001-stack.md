@@ -39,6 +39,13 @@ The artifact contains inline CSS and JavaScript only and requests nothing off di
   assertion is about what a reader sees.
 - **Cited code wraps rather than scrolls.** A horizontally scrolled line is a line the reader
   cannot see, which is the one thing a citation may never be, and it would be lost in print.
+- **A branch name is not a pin.** `head` is resolved once per render, so a document written
+  against a stacked branch showed different code beside unchanged prose after a rebase — three
+  of nine citations in the first real document drifted within a day, two onto unrelated code,
+  and `check` still exited 0. Sources now carry `sha:`, written by `explorer pin`, and a branch
+  that has moved off it fails the build. Pinning is deliberately a separate command: it records
+  where the branch is and does nothing to the prose, so repinning without re-reading converts a
+  loud failure into a quiet lie.
 - **File names in prose are resolved, not authored.** A code span written as
   `<source-id> <path>` is looked up in the tree at the pinned sha and linked by the tool, so a
   document's file list carries the same guarantee its citations do. Paths may be abbreviated

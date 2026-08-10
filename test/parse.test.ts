@@ -23,6 +23,7 @@ describe('parseDocument', () => {
         base: null,
         head: 'master',
         prs: [],
+        sha: null,
       },
     ]);
   });
