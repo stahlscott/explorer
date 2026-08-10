@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
+import { SKINS } from '../../src/styles/skins.ts';
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname);
 
@@ -400,7 +401,7 @@ test('the nav links land on their sections', async ({ page }) => {
 });
 
 test('shows the citation path exactly as it is on disk, in every skin', async ({ page }) => {
-  for (const skin of ['panel', 'terminal', 'geocities']) {
+  for (const skin of Object.keys(SKINS)) {
     const out = join(mkdtempSync(join(tmpdir(), `explorer2-${skin}-`)), 'artifact.html');
     execFileSync(
       process.execPath,
@@ -432,7 +433,7 @@ test('shows the citation path exactly as it is on disk, in every skin', async ({
 });
 
 test('renders no text that disappears into its own background', async ({ page }) => {
-  for (const skin of ['panel', 'terminal', 'geocities']) {
+  for (const skin of Object.keys(SKINS)) {
     const out = join(mkdtempSync(join(tmpdir(), `explorer2-contrast-${skin}-`)), 'artifact.html');
     execFileSync(
       process.execPath,

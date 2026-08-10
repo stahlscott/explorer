@@ -167,94 +167,9 @@ code { background: var(--wash); color: var(--accent); }
 `,
 };
 
-/**
- * Geocities. Loud, and deliberately so. Honest in the one way that matters: the
- * code is still verbatim and still cited.
- */
-const GEOCITIES: Skin = {
-  light: `
-  --paper: #000080;
-  --card: #c0c0c0;
-  --wash: #ffff00;
-  --ink: #ffffff;
-  --ink-soft: #ffff66;
-  --ink-faint: #00ffff;
-  --rule: #ff00ff;
-  --accent: #00ff00;
-  --shadow: 4px 4px 0 #000000;
-`,
-  dark: `
-  --paper: #1a0033;
-  --card: #2b2b2b;
-  --wash: #4b0082;
-  --ink: #ffff00;
-  --ink-soft: #00ffff;
-  --ink-faint: #ff69b4;
-  --rule: #00ff00;
-  --accent: #ff00ff;
-  --shadow: 4px 4px 0 #000000;
-`,
-  rules: `
-:root {
-  --font-prose: "Comic Sans MS", "Chalkboard SE", ${SANS};
-  --font-head: "Comic Sans MS", "Chalkboard SE", ${SANS};
-  --font-ui: "Comic Sans MS", "Chalkboard SE", ${SANS};
-  --font-mono: "Courier New", ${MONO};
-  --size-prose: 1rem;
-  --size-code: .84rem;
-  --size-h1: 2.1rem;
-  --size-h2: 1.5rem;
-  --size-h3: 1.1rem;
-  --weight-head: 700;
-  --measure-text: 38rem;
-  --measure-code: 56rem;
-  --line-prose: 1.6;
-}
-h1 { color: var(--wash); text-shadow: 2px 2px 0 var(--rule), 4px 4px 0 #000; text-align: center; }
-h2 { color: var(--accent); border-bottom: 3px ridge var(--rule); }
-h3 { color: var(--ink-soft); }
-h2::before { content: "\\2605 "; }
-strong { color: var(--wash); }
-figure.cite {
-  background: var(--card);
-  border: 3px ridge var(--rule);
-  box-shadow: var(--shadow);
-}
-.cite-head {
-  display: flex;
-  align-items: baseline;
-  gap: .5rem;
-  padding: .35rem .7rem;
-  background: var(--rule);
-  color: #ffffff;
-}
-.cite-head b, .cite-dir, .cite-file, .cite-lines { color: #ffffff; }
-.cite-code { background: #ffffff; }
-.cite pre.shiki { padding: .6rem 0; }
-.cite .line::before { color: #6a6a6a; opacity: 1; }
-figure.cite figcaption {
-  padding: .45rem .7rem;
-  background: var(--wash);
-  color: #000000;
-  border-top: 2px groove var(--rule);
-  font-size: .88rem;
-}
-button.cite-more, button.ask, a.cite-link { color: #ffffff; }
-button.cite-more:hover, button.ask:hover, a.cite-link:hover { color: var(--accent); background: #000; }
-table { border: 2px ridge var(--rule); }
-th { background: var(--rule); color: #fff; padding-left: .5rem; }
-code { background: var(--wash); color: #000; padding: 0 .15em; }
-/* Base strips the chip background inside a table, which left black on navy. */
-td code { color: var(--ink-faint); }
-.theme-toggle { background: #000000; color: var(--accent); border-color: var(--accent); }
-header { border-bottom: 4px double var(--rule); }
-`,
-};
-
 export const SKINS: Record<string, Skin> = {
   panel: PANEL,
   terminal: TERMINAL,
-  geocities: GEOCITIES,
 };
 
 export const DEFAULT_SKIN = 'panel';
