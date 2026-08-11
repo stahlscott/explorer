@@ -183,8 +183,8 @@ sources:
 
 describe('file references in prose', () => {
   const TREE = {
-    'app/scripts/modules/provider/FeatureFeedback/types.ts': numberedLines(5),
-    'app/scripts/api/FeatureFeedback.ts': numberedLines(5),
+    'src/features/statements/types.ts': numberedLines(5),
+    'src/features/statements/useStatement.ts': numberedLines(5),
     'packages/ui/src/theme/types.ts': numberedLines(5),
     'docs/notes.md': numberedLines(5),
   };
@@ -194,11 +194,11 @@ describe('file references in prose', () => {
 title: Fixture
 sources:
   - id: ${id}
-    repo: styleseat/mobileweb
+    repo: acme/web
     path: ${repoPath}
     head: main
   - id: api
-    repo: styleseat/styleseat
+    repo: acme/platform
     path: ${repoPath}
     head: main
 ---
@@ -217,12 +217,12 @@ ${body}`;
 
   it('resolves an abbreviated path when exactly one file ends with it', () => {
     const repo = makeRepo(TREE);
-    const parsed = parseDocument(doc(repo.path, 'Read `web api/FeatureFeedback.ts`.\n'));
+    const parsed = parseDocument(doc(repo.path, 'Read `web statements/useStatement.ts`.\n'));
 
     const resolution = resolveDocument(parsed);
 
-    expect(resolution.references.get('web api/FeatureFeedback.ts')?.path).toBe(
-      'app/scripts/api/FeatureFeedback.ts',
+    expect(resolution.references.get('web statements/useStatement.ts')?.path).toBe(
+      'src/features/statements/useStatement.ts',
     );
   });
 
@@ -277,7 +277,7 @@ describe('bare file references in a single-source document', () => {
 title: Fixture
 sources:
   - id: web
-    repo: styleseat/mobileweb
+    repo: acme/web
     path: ${repoPath}
     head: main
 ---

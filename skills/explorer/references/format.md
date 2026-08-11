@@ -7,17 +7,17 @@ markdown: headings, bullets, tables, emphasis, links, blockquotes.
 
 ```yaml
 ---
-title: Feature feedback — DEV-193 / 218 / 173 / 219
+title: Statements — how one period becomes one row
 question: >              # optional; for exploration documents with no diff
-  When a feature stores a per-user flag, what actually persists?
+  When the statements hook returns null, what does that actually mean?
 sources:
   - id: api              # required; how citations name this repo
-    repo: styleseat/styleseat   # optional; enables GitHub links
-    path: ~/work/styleseat      # required; a local clone
-    base: master                # optional; documentation only, never resolved
-    head: dev-193               # required; branch, tag, or SHA
+    repo: acme/platform         # optional; enables GitHub links
+    path: ~/src/platform        # required; a local clone
+    base: main                  # optional; documentation only, never resolved
+    head: feature/statements    # required; branch, tag, or SHA
     sha: 6d6d67216b2b...        # written by `explorer pin`; drift is a failure
-    pr: 10095                   # optional; `prs: [12800, 12805]` for several
+    pr: 4120                    # optional; `prs: [8801, 8802]` for several
 ---
 ```
 
@@ -30,8 +30,8 @@ pass through untouched. Values may carry trailing `#` comments.
 ## Citing code
 
 ```
-:::cite web src/feedback/eligibility.ts:34-41
-The frequency check reads localStorage, not the API.
+:::cite web src/features/statements/useStatement.ts:14-23
+Null before the first response, and null again when the period has no statement.
 :::
 ```
 
@@ -50,7 +50,7 @@ A code span written as `` `<source-id> <path>` `` is looked up in the tree at th
 and linked by the tool:
 
 ```markdown
-| `web modules/provider/FeatureFeedback/types.ts` | The persisted state shape. |
+| `web src/features/statements/useStatement.ts` | The fetch, and the null that means two things. |
 ```
 
 The path may be abbreviated — the fragment must match exactly one file. An explicit reference
@@ -58,8 +58,8 @@ that matches none or several **fails the build**, so a file list is checked rath
 asserted.
 
 In a single-source document a bare path containing a `/` is also resolved, but it never fails:
-prose is not a claim about a path. That is what keeps `` `ProviderGoals.model` `` from
-breaking a build.
+prose is not a claim about a path. That is what keeps a passing mention like
+`` `statements/generate` `` from breaking a build.
 
 ## Fenced blocks
 
@@ -74,13 +74,13 @@ citation, and is left alone.
 | Code | Message |
 |---|---|
 | `range-past-eof` | `web src/x.ts has 41 lines, cited 55-60` |
-| `missing-file` | `web src/gone.ts is not present at dev-219 (3b76f0a194)` |
+| `missing-file` | `web src/gone.ts is not present at feature/statements (3b76f0a194)` |
 | `unknown-source` | `unknown source 'nope' in src/a.ts; declared sources are web, api` |
-| `ref-not-found` | `web has no ref 'dev-219' locally; fetch it or pin a different head` |
+| `ref-not-found` | `web has no ref 'feature/statements' locally; fetch it or pin a different head` |
 | `repo-not-found` | `web /path is not a git repository` |
-| `missing-reference` | `web nope/gone.ts matches no file at dev-219` |
-| `ambiguous-reference` | `web types.ts matches 2 files at dev-219; name more of the path` |
-| `moved-head` | `web was pinned to 3b76f0a194 but dev-219 is now 78df615f91; re-read the citations, then repin` |
+| `missing-reference` | `web nope/gone.ts matches no file at feature/statements` |
+| `ambiguous-reference` | `web types.ts matches 2 files at feature/statements; name more of the path` |
+| `moved-head` | `web was pinned to 3b76f0a194 but feature/statements is now 78df615f91; re-read the citations, then repin` |
 
 Exit 2 means wrong usage, not a bad document.
 

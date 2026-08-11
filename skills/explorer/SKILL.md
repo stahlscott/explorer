@@ -99,9 +99,9 @@ deliberately not adjacent.
    for what already does the job. `git log -S<concept>` finds when the idea arrived and what
    it replaced; grep by the vocabulary the code uses, not by file names, since a second
    implementation rarely shares a naming convention with the first. (`-S` matches case
-   exactly: `-SinvitedClients` finds the commit, `-Sinvitedclients` finds nothing and says
-   nothing. A silent empty result is what a near-miss looks like, so search a string you know
-   is there first and confirm the command finds it before trusting an empty one.)
+   exactly: `-SretryLimit` finds the commit, `-Sretrylimit` finds nothing and says nothing. A
+   silent empty result is what a near-miss looks like, so search a string you know is there
+   first and confirm the command finds it before trusting an empty one.)
 
    Three outcomes, each worth a sentence. **Nothing exists** — say so; the absence is context.
    **Something exists and was extended** — name it, so the reader has the lineage. **Something
@@ -229,10 +229,10 @@ Two absence claims in the first two documents were wrong on the first attempt, a
 caught by searching rather than re-reading.
 
 **Then resolve what the absence costs.** An absence is half a finding: the other half is the
-code that consumes what is missing. "The event is not in `EventMap.ts`" is where the search
-ends and the finding starts — open the tracker, find the branch that decides whether an
-unregistered name is sent, and report the consequence. One more file usually turns *could
-not determine* into a finding, and a question that one file would settle does not belong in
+code that consumes what is missing. "The name is not in the registry" is where the search ends
+and the finding starts — open whatever reads that registry, find the branch that decides what
+happens to a name it does not know, and report the consequence. One more file usually turns
+*could not determine* into a finding, and a question that one file would settle does not belong in
 part 8.
 
 ## Red flags

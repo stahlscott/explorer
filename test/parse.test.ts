@@ -5,8 +5,8 @@ const FRONT_MATTER = `---
 title: Example
 sources:
   - id: web
-    repo: styleseat/mobileweb
-    path: ~/work/mobileweb
+    repo: acme/web
+    path: ~/src/web
     head: master
 ---
 `;
@@ -18,8 +18,8 @@ describe('parseDocument', () => {
     expect(doc.sources).toEqual([
       {
         id: 'web',
-        repo: 'styleseat/mobileweb',
-        path: '~/work/mobileweb',
+        repo: 'acme/web',
+        path: '~/src/web',
         base: null,
         head: 'master',
         prs: [],
@@ -35,7 +35,7 @@ question: >
   What breaks when the remote store is unreachable?
 sources:
   - id: web
-    path: ~/work/mobileweb
+    path: ~/src/web
     head: master
 ---
 `);
@@ -50,7 +50,7 @@ sources:
 title: Example
 sources:
   - id: web
-    path: ~/work/mobileweb
+    path: ~/src/web
     head: dev-219        # tip of the stack
 ---
 `);
@@ -150,10 +150,10 @@ describe('parseDocument rejections', () => {
 title: Example
 sources:
   - id: web
-    path: ~/work/mobileweb
+    path: ~/src/web
     head: master
   - id: api
-    path: ~/work/styleseat
+    path: ~/src/platform
     head: master
 ---
 `;
@@ -184,7 +184,7 @@ describe('parseDocument pull requests', () => {
 title: Example
 sources:
   - id: web
-    path: ~/work/mobileweb
+    path: ~/src/web
     head: master
     prs: [12800, 12805]
 ---
@@ -198,7 +198,7 @@ sources:
 title: Example
 sources:
   - id: api
-    path: ~/work/styleseat
+    path: ~/src/platform
     head: master
     pr: 10095
 ---

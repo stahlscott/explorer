@@ -1,5 +1,11 @@
 node_modules/
 dist/
-out/
 test-results/
 playwright-report/
+
+# Rendered artifacts, and the documents behind them. A document cites the
+# repositories its author can read; nobody else's tree should carry either.
+.output/
+
+# Prototyping notes that matter locally and should not ship.
+.local/

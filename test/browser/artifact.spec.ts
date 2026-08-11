@@ -1,25 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { SKINS } from '../../src/styles/skins.ts';
+import { buildCorpus, buildSingleSourceCorpus, render } from '../helpers/fixture.ts';
 
-const ROOT = resolve(new URL('../..', import.meta.url).pathname);
-
-/** Render the real Stage 0 document against the live checkouts. */
-function renderArtifact(): string {
-  const out = join(mkdtempSync(join(tmpdir(), 'explorer2-browser-')), 'artifact.html');
-  execFileSync(
-    process.execPath,
-    ['--experimental-strip-types', 'src/cli.ts', 'render', 'stage0/feature-feedback.md', '-o', out],
-    { cwd: ROOT, encoding: 'utf8' },
-  );
-  return out;
-}
-
-const ARTIFACT = renderArtifact();
+// Built here rather than read from a checkout: the byte-identity test below
+// compares what the browser shows against `git show`, and it can only mean
+// something if the repository it reads is one this suite created.
+const CORPUS = buildCorpus();
+const ARTIFACT = render(CORPUS.doc);
 
 /**
  * Deny everything that is not the artifact itself. Any off-disk request is a
@@ -53,7 +42,7 @@ test('opens from file:// with the network denied and logs nothing', async ({ pag
   const errors = await openOffline(page);
 
   await expect(page.locator('h1')).toBeVisible();
-  await expect(page.locator('figure.cite')).toHaveCount(9);
+  await expect(page.locator('figure.cite')).toHaveCount(CORPUS.citations);
   expect(errors).toEqual([]);
 });
 
@@ -104,16 +93,16 @@ test('copies a follow-up prompt naming the repo, sha, path and lines', async ({ 
 
   const clipboard = await page.evaluate(() => navigator.clipboard.readText());
   expect(clipboard).toBe(expected);
-  expect(clipboard).toContain('styleseat/mobileweb');
+  expect(clipboard).toContain(CORPUS.repoSlug);
 });
 
 test('renders code from the repo differently from code an author wrote', async ({ page }) => {
   await openOffline(page);
 
-  // The Stage 0 document has no sketch blocks, so this asserts the citation
+  // The fixture document has no sketch blocks, so this asserts the citation
   // treatment is the one in use and is visually distinct from a bare pre.
   const figure = page.locator('figure.cite').first();
-  await expect(figure.locator('.cite-where b')).toHaveText(/api|web|e2e/);
+  await expect(figure.locator('.cite-where b')).toHaveText(/api|web/);
   await expect(figure.locator('.line').first()).toHaveAttribute('data-line', /\d+/);
 });
 
@@ -139,14 +128,10 @@ test('every cited line the browser shows matches the repository at the pinned sh
     })),
   }));
 
-  expect(citations).toHaveLength(9);
+  expect(citations).toHaveLength(CORPUS.citations);
 
   const shaById = new Map(pins as [string, string][]);
-  const directories = new Map([
-    ['api', join(process.env.HOME!, 'work/styleseat')],
-    ['web', join(process.env.HOME!, 'work/mobileweb')],
-    ['e2e', join(process.env.HOME!, 'work/cypress')],
-  ]);
+  const directories = CORPUS.directories;
 
   for (const citation of citations) {
     const [first, last] = citation.range.split('–');
@@ -170,6 +155,31 @@ test('every cited line the browser shows matches the repository at the pinned sh
       expected,
     );
   }
+});
+
+test('colours every cited language, including one cited below a docstring', async ({ page }) => {
+  await openOffline(page);
+
+  // Highlighting an excerpt rather than the whole file starts the grammar
+  // mid-file: a window that opens inside a module docstring loses every token
+  // colour and still renders. The fixture cites below one on purpose, and the
+  // failure is silent, so it needs an assertion rather than an eye.
+  const flat = await page.evaluate(() =>
+    [...document.querySelectorAll('figure.cite')].map(figure => {
+      const colours = new Set(
+        [...figure.querySelectorAll('.line:not(.ctx) span[style]')].map(
+          span => getComputedStyle(span).color,
+        ),
+      );
+      return {
+        file: figure.querySelector('.cite-file')!.textContent!,
+        colours: colours.size,
+      };
+    }),
+  );
+
+  expect(flat.length).toBe(CORPUS.citations);
+  expect(flat.filter(entry => entry.colours < 2)).toEqual([]);
 });
 
 test('a collapsed citation is no taller than the lines it shows', async ({ page }) => {
@@ -242,12 +252,8 @@ test('shows each citation path in full rather than truncating provenance', async
 });
 
 test('renders a single-source document, where citations omit the source id', async ({ page }) => {
-  const out = join(mkdtempSync(join(tmpdir(), 'explorer2-single-')), 'artifact.html');
-  execFileSync(
-    process.execPath,
-    ['--experimental-strip-types', 'src/cli.ts', 'render', 'stage0/user-state.md', '-o', out],
-    { cwd: ROOT, encoding: 'utf8' },
-  );
+  const single = buildSingleSourceCorpus();
+  const out = render(single.doc);
 
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -261,9 +267,9 @@ test('renders a single-source document, where citations omit the source id', asy
   await page.goto(pathToFileURL(out).href);
 
   await expect(page.locator('.pins li')).toHaveCount(1);
-  await expect(page.locator('figure.cite')).toHaveCount(10);
+  await expect(page.locator('figure.cite')).toHaveCount(single.citations);
   // The front matter question is prose the renderer must surface, not drop.
-  await expect(page.locator('.question')).toContainText('what actually persists');
+  await expect(page.locator('.question')).toContainText(single.question);
   expect(errors).toEqual([]);
 
   const truncated = await page.evaluate(
@@ -402,21 +408,7 @@ test('the nav links land on their sections', async ({ page }) => {
 
 test('shows the citation path exactly as it is on disk, in every skin', async ({ page }) => {
   for (const skin of Object.keys(SKINS)) {
-    const out = join(mkdtempSync(join(tmpdir(), `explorer2-${skin}-`)), 'artifact.html');
-    execFileSync(
-      process.execPath,
-      [
-        '--experimental-strip-types',
-        'src/cli.ts',
-        'render',
-        'stage0/feature-feedback.md',
-        '-o',
-        out,
-        '--style',
-        skin,
-      ],
-      { cwd: ROOT, encoding: 'utf8' },
-    );
+    const out = render(CORPUS.doc, skin);
     await page.goto(pathToFileURL(out).href);
 
     // A skin may restyle a path; it may not rewrite one. text-transform makes
@@ -434,13 +426,7 @@ test('shows the citation path exactly as it is on disk, in every skin', async ({
 
 test('renders no text that disappears into its own background', async ({ page }) => {
   for (const skin of Object.keys(SKINS)) {
-    const out = join(mkdtempSync(join(tmpdir(), `explorer2-contrast-${skin}-`)), 'artifact.html');
-    execFileSync(
-      process.execPath,
-      ['--experimental-strip-types', 'src/cli.ts', 'render', 'stage0/feature-feedback.md',
-        '-o', out, '--style', skin],
-      { cwd: ROOT, encoding: 'utf8' },
-    );
+    const out = render(CORPUS.doc, skin);
     await page.goto(pathToFileURL(out).href);
 
     const unreadable = await page.evaluate(() => {

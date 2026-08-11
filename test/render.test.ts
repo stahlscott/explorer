@@ -57,7 +57,7 @@ describe('renderDocument', () => {
 title: Fixture
 sources:
   - id: web
-    repo: styleseat/mobileweb
+    repo: acme/web
     path: ${repo.path}
     head: main
 ---
@@ -107,7 +107,7 @@ Why this matters.
     const prompt = figure.match(/data-ask="([^"]*)"/)![1]!;
     const decoded = prompt.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'");
 
-    expect(decoded).toContain('styleseat/mobileweb');
+    expect(decoded).toContain('acme/web');
     expect(decoded).toContain(sha);
     expect(decoded).toContain('src/widen.ts');
     expect(decoded).toContain('3-8');
@@ -289,7 +289,7 @@ describe('links out of the artifact', () => {
 title: Fixture
 sources:
   - id: web
-    repo: styleseat/mobileweb
+    repo: acme/web
     path: ${repoPath}
     head: main
 ${extra}---
@@ -301,7 +301,7 @@ ${body}`;
     const out = await render(docFor(repo.path, '', ':::cite src/a.ts:4-8\n:::\n'));
 
     expect(out).toContain(
-      `href="https://github.com/styleseat/mobileweb/blob/${repo.sha}/src/a.ts#L4-L8"`,
+      `href="https://github.com/acme/web/blob/${repo.sha}/src/a.ts#L4-L8"`,
     );
   });
 
@@ -344,8 +344,8 @@ sources:
       docFor(repo.path, '    prs: [12800, 12805]\n', ':::cite src/a.ts:1-2\n:::\n'),
     );
 
-    expect(out).toContain('href="https://github.com/styleseat/mobileweb/pull/12800"');
-    expect(out).toContain('href="https://github.com/styleseat/mobileweb/pull/12805"');
+    expect(out).toContain('href="https://github.com/acme/web/pull/12800"');
+    expect(out).toContain('href="https://github.com/acme/web/pull/12805"');
     expect(out).toContain('#12805');
   });
 });
@@ -356,7 +356,7 @@ describe('the editor link', () => {
 title: Fixture
 sources:
   - id: web
-    repo: styleseat/mobileweb
+    repo: acme/web
     path: ${repoPath}
     head: ${head}
 ---
@@ -418,7 +418,7 @@ sources:
 title: Fixture
 sources:
   - id: web
-    repo: styleseat/mobileweb
+    repo: acme/web
     path: ${repo.path}
     head: main
 ---
@@ -572,7 +572,7 @@ sources:
 
 describe('linked file references', () => {
   const TREE = {
-    'app/scripts/api/FeatureFeedback.ts': numberedLines(6),
+    'src/features/statements/useStatement.ts': numberedLines(6),
     'docs/notes.md': numberedLines(6),
   };
 
@@ -581,7 +581,7 @@ describe('linked file references', () => {
 title: Fixture
 sources:
   - id: web
-    repo: styleseat/mobileweb
+    repo: acme/web
     path: ${repoPath}
     head: main
 ---
@@ -590,20 +590,20 @@ ${body}`;
 
   it('links a named file to the blob at the pinned sha', async () => {
     const repo = makeRepo(TREE);
-    const out = await render(docFor(repo.path, 'Read `web api/FeatureFeedback.ts` first.\n'));
+    const out = await render(docFor(repo.path, 'Read `web statements/useStatement.ts` first.\n'));
 
     expect(out).toContain(
-      `href="https://github.com/styleseat/mobileweb/blob/${repo.sha}/app/scripts/api/FeatureFeedback.ts"`,
+      `href="https://github.com/acme/web/blob/${repo.sha}/src/features/statements/useStatement.ts"`,
     );
   });
 
   it('shows the path as written and names the full path in the title', async () => {
     const repo = makeRepo(TREE);
-    const out = await render(docFor(repo.path, 'Read `web api/FeatureFeedback.ts` first.\n'));
+    const out = await render(docFor(repo.path, 'Read `web statements/useStatement.ts` first.\n'));
     const link = out.match(/<a class="file-ref"[^>]*>[\s\S]*?<\/a>/)![0];
 
-    expect(link).toContain('web api/FeatureFeedback.ts');
-    expect(link).toContain('title="app/scripts/api/FeatureFeedback.ts');
+    expect(link).toContain('web statements/useStatement.ts');
+    expect(link).toContain('title="src/features/statements/useStatement.ts');
   });
 
   it('leaves prose code untouched when it names no file', async () => {
@@ -620,7 +620,7 @@ ${body}`;
     const out = await render(
       docFor(
         repo.path,
-        '| file | why |\n|---|---|\n| `web api/FeatureFeedback.ts` | The wire contract. |\n| `web docs/notes.md` | The read path. |\n',
+        '| file | why |\n|---|---|\n| `web statements/useStatement.ts` | The wire contract. |\n| `web docs/notes.md` | The read path. |\n',
       ),
     );
 

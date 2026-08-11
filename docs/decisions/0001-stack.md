@@ -54,7 +54,7 @@ The artifact contains inline CSS and JavaScript only and requests nothing off di
   documents only, and only with a slash in it) links when it resolves and is left alone
   otherwise — prose is not a claim about a path.
 - **A project-level `.npmrc` points at the public registry**, because the global one points at
-  StyleSeat's CodeArtifact. Nothing here is a work dependency.
+  a private registry. Nothing here is a work dependency.
 
 ## Alternatives
 
