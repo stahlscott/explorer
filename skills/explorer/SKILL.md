@@ -198,7 +198,7 @@ When you need to cut, cut from the bottom.
 
 ## Drift
 
-`head: dev-219` names a branch, and a stacked branch gets rebased. Resolve it at render time
+`head: feature/statements` names a branch, and a stacked branch gets rebased. Resolve it at render time
 and the same line range shows different code beside unchanged prose — silently, because the
 range still resolves. This is the guarantee failing in the one way that does not look like a
 failure.

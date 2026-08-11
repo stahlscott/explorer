@@ -23,7 +23,7 @@ function capture() {
 }
 
 function writeDoc(body: string): string {
-  const dir = mkdtempSync(join(tmpdir(), 'explorer2-doc-'));
+  const dir = mkdtempSync(join(tmpdir(), 'explorer-doc-'));
   const path = join(dir, 'doc.md');
   writeFileSync(path, body);
   return path;
@@ -60,7 +60,7 @@ describe('render needs no ceremony', () => {
 
   it('still honours an explicit output path', async () => {
     const { io } = capture();
-    const output = join(mkdtempSync(join(tmpdir(), 'explorer2-out-')), 'named.html');
+    const output = join(mkdtempSync(join(tmpdir(), 'explorer-out-')), 'named.html');
 
     await run(['render', goodDoc(), '-o', output], io.out, io.err);
 
@@ -78,7 +78,7 @@ describe('render needs no ceremony', () => {
 
   it('points the editor link wherever the reader keeps their editor', async () => {
     const { io } = capture();
-    const output = join(mkdtempSync(join(tmpdir(), 'explorer2-editor-')), 'a.html');
+    const output = join(mkdtempSync(join(tmpdir(), 'explorer-editor-')), 'a.html');
 
     await run(
       ['render', goodDoc(), '-o', output, '--editor', 'zed://file{path}:{line}'],
@@ -109,7 +109,7 @@ describe('the rendered artifact is reachable', () => {
 
   it('prints a file URL, not the bare path, so a terminal can open it', async () => {
     const { io, out } = capture();
-    const output = join(mkdtempSync(join(tmpdir(), 'explorer2-out-')), 'doc.html');
+    const output = join(mkdtempSync(join(tmpdir(), 'explorer-out-')), 'doc.html');
 
     const code = await run(['render', goodDoc(), '-o', output], io.out, io.err);
 
@@ -119,7 +119,7 @@ describe('the rendered artifact is reachable', () => {
 
   it('launches the opener with the artifact when --open is given', async () => {
     const { io } = capture();
-    const output = join(mkdtempSync(join(tmpdir(), 'explorer2-out-')), 'doc.html');
+    const output = join(mkdtempSync(join(tmpdir(), 'explorer-out-')), 'doc.html');
     const launched: string[] = [];
 
     const code = await run(['render', goodDoc(), '-o', output, '--open'], io.out, io.err, path =>
@@ -132,7 +132,7 @@ describe('the rendered artifact is reachable', () => {
 
   it('does not launch anything without --open', async () => {
     const { io } = capture();
-    const output = join(mkdtempSync(join(tmpdir(), 'explorer2-out-')), 'doc.html');
+    const output = join(mkdtempSync(join(tmpdir(), 'explorer-out-')), 'doc.html');
     const launched: string[] = [];
 
     await run(['render', goodDoc(), '-o', output], io.out, io.err, path => launched.push(path));
@@ -224,7 +224,7 @@ sources:
 describe('explorer render', () => {
   it('writes a self-contained artifact and exits 0', async () => {
     const doc = goodDoc();
-    const out = join(mkdtempSync(join(tmpdir(), 'explorer2-out-')), 'artifact.html');
+    const out = join(mkdtempSync(join(tmpdir(), 'explorer-out-')), 'artifact.html');
     const { io } = capture();
 
     const code = await run(['render', doc, '-o', out], io.out, io.err);
@@ -245,7 +245,7 @@ sources:
 :::cite src/a.ts:99-99
 :::
 `);
-    const out = join(mkdtempSync(join(tmpdir(), 'explorer2-out-')), 'artifact.html');
+    const out = join(mkdtempSync(join(tmpdir(), 'explorer-out-')), 'artifact.html');
     const { io, err } = capture();
 
     const code = await run(['render', doc, '-o', out], io.out, io.err);
@@ -407,7 +407,7 @@ sources:
 :::cite src/a.ts:1-2
 :::
 `);
-    const out = join(mkdtempSync(join(tmpdir(), 'explorer2-moved-')), 'a.html');
+    const out = join(mkdtempSync(join(tmpdir(), 'explorer-moved-')), 'a.html');
     const { io, err } = capture();
 
     expect(await run(['render', path, '-o', out], io.out, io.err)).toBe(1);

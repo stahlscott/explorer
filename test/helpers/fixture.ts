@@ -157,7 +157,7 @@ export function buildCorpus(): Corpus {
     'src/features/statements/useStatement.ts': USE_STATEMENT_TS,
   });
 
-  const doc = join(mkdtempSync(join(tmpdir(), 'explorer2-corpus-')), 'statements.md');
+  const doc = join(mkdtempSync(join(tmpdir(), 'explorer-corpus-')), 'statements.md');
   writeFileSync(
     doc,
     `---
@@ -262,7 +262,7 @@ export function buildSingleSourceCorpus(): Corpus {
   });
 
   const question = 'what does a null statement actually mean';
-  const doc = join(mkdtempSync(join(tmpdir(), 'explorer2-single-')), 'nulls.md');
+  const doc = join(mkdtempSync(join(tmpdir(), 'explorer-single-')), 'nulls.md');
   writeFileSync(
     doc,
     `---
@@ -320,7 +320,7 @@ Whether any caller needs the difference. Nothing logs either case.
 
 /** Render a corpus document to a temporary artifact and return its path. */
 export function render(doc: string, style?: string): string {
-  const out = join(mkdtempSync(join(tmpdir(), 'explorer2-artifact-')), 'artifact.html');
+  const out = join(mkdtempSync(join(tmpdir(), 'explorer-artifact-')), 'artifact.html');
   const args = ['--experimental-strip-types', 'src/cli.ts', 'render', doc, '-o', out];
   if (style !== undefined) args.push('--style', style);
   execFileSync(process.execPath, args, { cwd: ROOT, encoding: 'utf8' });

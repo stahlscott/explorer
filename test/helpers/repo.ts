@@ -19,7 +19,7 @@ function git(cwd: string, ...args: string[]): string {
 export function makeRepo(files: Record<string, string>, branch = 'main'): TempRepo {
   // Canonical, because git reports realpaths and macOS puts temp dirs behind a
   // symlink. A test comparing the two forms fails for the wrong reason.
-  const path = realpathSync(mkdtempSync(join(tmpdir(), 'explorer2-')));
+  const path = realpathSync(mkdtempSync(join(tmpdir(), 'explorer-')));
 
   git(path, 'init', '--quiet', '--initial-branch', branch);
   git(path, 'config', 'user.email', 'test@example.com');
@@ -67,7 +67,7 @@ export function addUncheckedBranch(
 
 /** A linked worktree with `branch` checked out, as `git worktree add` makes. */
 export function addWorktree(repo: TempRepo, branch: string): string {
-  const path = realpathSync(mkdtempSync(join(tmpdir(), 'explorer2-wt-')));
+  const path = realpathSync(mkdtempSync(join(tmpdir(), 'explorer-wt-')));
   rmSync(path, { recursive: true, force: true });
   git(repo.path, 'worktree', 'add', '--quiet', path, branch);
   return path;

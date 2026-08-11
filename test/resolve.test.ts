@@ -71,7 +71,7 @@ describe('resolveDocument', () => {
 title: Fixture
 sources:
   - id: web
-    path: ~/definitely-not-a-real-directory-explorer2
+    path: ~/definitely-not-a-real-directory-explorer
     head: main
 ---
 :::cite src/a.ts:1-1
@@ -145,7 +145,7 @@ sources:
 title: Fixture
 sources:
   - id: web
-    path: /definitely/not/a/repo/explorer2
+    path: /definitely/not/a/repo/explorer
     head: main
 ---
 :::cite src/a.ts:1-1

@@ -22,7 +22,7 @@ and a line range, and the renderer fetches the bytes.
 Node 22 or newer.
 
 ```sh
-git clone <this repo> && cd explorer2
+git clone <this repo> && cd explorer
 npm install
 ./scripts/install.sh
 ```

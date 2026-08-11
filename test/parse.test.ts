@@ -51,11 +51,11 @@ title: Example
 sources:
   - id: web
     path: ~/src/web
-    head: dev-219        # tip of the stack
+    head: feature/statements        # tip of the stack
 ---
 `);
 
-    expect(doc.sources[0]!.head).toBe('dev-219');
+    expect(doc.sources[0]!.head).toBe('feature/statements');
   });
 });
 

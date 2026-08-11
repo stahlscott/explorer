@@ -2,13 +2,14 @@
 
 Status: accepted (2026-08-10)
 
-Carried over from `~/code/explorer/docs/decisions/0001-v1-stack.md`, which was sound. The
-schema and cap machinery it also specified is not carried over — see
-`docs/superpowers/specs/2026-08-09-explorer2-design.md` for why.
+Carried over from an earlier prototype's stack decision, which was sound. The typed producer
+contract, coverage ledger and presentation-selection machinery that prototype also specified
+are deliberately not carried over: they made the output schema-shaped, which is what stopped
+it being worth reading.
 
 ## Context
 
-Explorer2 needs a locally packaged CLI, deterministic single-file HTML, offline code
+Explorer needs a locally packaged CLI, deterministic single-file HTML, offline code
 presentation and interaction, and unit plus browser verification with no application server.
 Its one hard guarantee is that every line of code in the artifact was read from a repository at
 a pinned SHA.
