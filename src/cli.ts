@@ -1,10 +1,11 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseDocument } from './parse.ts';
 import { resolveDocument } from './resolve.ts';
 import { renderDocument } from './render.ts';
+import { DEFAULT_EDITOR_URL } from './render.ts';
 import { DEFAULT_SKIN, isSkinName, SKINS } from './styles/skins.ts';
 
 type Write = (line: string) => void;
@@ -14,16 +15,36 @@ const CONTEXT_LINES = 12;
 
 const USAGE = `usage: explorer <command> [options]
 
-  render <doc.md> -o <out.html>   resolve every citation and write one self-contained file
-  check  <doc.md>                 resolve citations only; print each failure
-  pin    <doc.md>                 record each source's current sha in the front matter
+  render <doc.md> [-o <out.html>]  resolve every citation and write one self-contained file
+  check  <doc.md>                  resolve citations only; print each failure
+  pin    <doc.md>                  record each source's current sha in the front matter
 
 Options:
-  --style <name>   reading surface: ${Object.keys(SKINS).join(", ")} (default ${DEFAULT_SKIN})
-  --no-toc         leave out the section nav
-  --open           open the artifact when it is written
+  --style <name>     reading surface: ${Object.keys(SKINS).join(", ")} (default ${DEFAULT_SKIN})
+  --no-toc           leave out the section nav
+  --open             open the artifact when it is written
+  --editor <url>     editor link template, {path} and {line} substituted
+                     (default ${DEFAULT_EDITOR_URL}; or set EXPLORER_EDITOR_URL)
+  --version          print the version
+
+Without -o, the artifact is written beside the document with an .html suffix.
 
 Exit codes: 0 ok, 1 the document or its citations failed, 2 wrong usage.`;
+
+/**
+ * Read from package.json rather than baked in at build time, so a source run and
+ * a built binary cannot disagree about which version they are.
+ */
+function version(): string {
+  try {
+    const manifest = JSON.parse(
+      readFileSync(join(import.meta.dirname, '..', 'package.json'), 'utf8'),
+    ) as { version?: string };
+    return manifest.version ?? '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
 
 /**
  * An absolute `file://` URL, because the point of rendering is that someone
@@ -58,9 +79,8 @@ interface Loaded {
 async function load(
   path: string,
   err: Write,
-  wantHtml: boolean,
-  skin: string = DEFAULT_SKIN,
-  toc = true,
+  /** Present when the caller wants HTML; absent for `check`. */
+  presentation?: { skin: string; toc: boolean; editorUrl: string },
 ): Promise<Loaded | null> {
   let text: string;
   try {
@@ -84,14 +104,17 @@ async function load(
     return null;
   }
 
-  if (!wantHtml) {
+  if (presentation === undefined) {
     return { citations: resolution.citations.length, references: resolution.references.size };
   }
 
   return {
     citations: resolution.citations.length,
     references: resolution.references.size,
-    html: await renderDocument(doc, resolution, { contextLines: CONTEXT_LINES, skin, toc }),
+    html: await renderDocument(doc, resolution, {
+      contextLines: CONTEXT_LINES,
+      ...presentation,
+    }),
   };
 }
 
@@ -187,6 +210,11 @@ export async function run(
     return 0;
   }
 
+  if (command === '--version' || command === '-v' || command === 'version') {
+    out(`explorer ${version()}`);
+    return 0;
+  }
+
   if (command === 'check') {
     const path = rest[0];
     if (path === undefined) {
@@ -194,7 +222,7 @@ export async function run(
       return 2;
     }
 
-    const loaded = await load(path, err, false);
+    const loaded = await load(path, err);
     if (!loaded) return 1;
 
     out(
@@ -211,10 +239,13 @@ export async function run(
       return 2;
     }
 
+    // Default beside the document. Naming an output path for every render is
+    // ceremony, and a reader who has to invent one tends not to open the result.
     const flag = rest.indexOf('-o');
-    const output = flag === -1 ? undefined : rest[flag + 1];
+    const output =
+      flag === -1 ? path.replace(/\.mdx?$/i, '') + '.html' : rest[flag + 1];
     if (output === undefined) {
-      err('render needs an output path: -o <out.html>');
+      err('-o needs a path: explorer render <doc.md> -o <out.html>');
       return 2;
     }
 
@@ -225,7 +256,21 @@ export async function run(
       return 2;
     }
 
-    const loaded = await load(path, err, true, styleName, !rest.includes('--no-toc'));
+    const editorFlag = rest.indexOf('--editor');
+    const editorUrl =
+      editorFlag === -1
+        ? (process.env.EXPLORER_EDITOR_URL ?? DEFAULT_EDITOR_URL)
+        : rest[editorFlag + 1];
+    if (editorUrl === undefined || editorUrl === '') {
+      err('--editor needs a template, such as zed://file{path}:{line}');
+      return 2;
+    }
+
+    const loaded = await load(path, err, {
+      skin: styleName,
+      toc: !rest.includes('--no-toc'),
+      editorUrl,
+    });
     // Nothing is written unless every citation resolved.
     if (!loaded?.html) return 1;
 

@@ -110,10 +110,24 @@ function findCheckout(directory: string, sha: string): string | null {
     return null;
   }
 
+  // Decided per block rather than on the HEAD line, because `prunable` is
+  // reported after it: a worktree whose directory has been deleted still lists
+  // its old HEAD, and returning early linked an editor at a path that is gone.
   let path: string | null = null;
-  for (const line of listing.split('\n')) {
+  let head: string | null = null;
+  let prunable = false;
+
+  const blocks = [...listing.split('\n'), ''];
+  for (const line of blocks) {
     if (line.startsWith('worktree ')) path = line.slice('worktree '.length);
-    else if (line.startsWith('HEAD ') && line.slice('HEAD '.length).trim() === sha) return path;
+    else if (line.startsWith('HEAD ')) head = line.slice('HEAD '.length).trim();
+    else if (line.startsWith('prunable')) prunable = true;
+    else if (line.trim() === '') {
+      if (path !== null && head === sha && !prunable) return path;
+      path = null;
+      head = null;
+      prunable = false;
+    }
   }
   return null;
 }

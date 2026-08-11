@@ -128,7 +128,7 @@ deliberately not adjacent.
     touched — is a claim; re-run the command before you ship it. If you would not send it to
     a colleague, it is not done.
 12. **Render it, and hand over the link.**
-    `explorer render <doc.md> -o <out.html> --open`. The artifact is the deliverable, not the
+    `explorer render <doc.md> --open`. The artifact is the deliverable, not the
     markdown. End your reply with the `file://` URL the command printed, on its own line, so
     it is one click away. A reader who has to reconstruct the path will read your summary
     instead of the document — and the summary is the part with no citations in it.
@@ -263,9 +263,9 @@ part 8.
 
 `explorer pin <doc.md>` records each source's current SHA in the front matter.
 `explorer check <doc.md>` resolves citations and file references; exit 0 means every claim
-about a path is true. `explorer render <doc.md> -o <out.html>` writes the artifact and refuses
-if anything fails; it prints an absolute `file://` URL, and `--open` opens it. `--style panel`
-(default) or `terminal`.
+about a path is true. `explorer render <doc.md>` writes the artifact beside the document and
+refuses if anything fails; it prints an absolute `file://` URL, `-o` overrides the path, and
+`--open` opens it. `--style panel` (default) or `terminal`.
 
 Syntax, front matter, and the failure messages are in
 [references/format.md](references/format.md).

@@ -45,6 +45,53 @@ sources:
 `);
 }
 
+describe('render needs no ceremony', () => {
+  it('writes beside the document when no output is named', async () => {
+    const { io, out } = capture();
+    const doc = goodDoc();
+
+    const code = await run(['render', doc], io.out, io.err);
+
+    const expected = doc.replace(/\.md$/, '.html');
+    expect(code).toBe(0);
+    expect(existsSync(expected)).toBe(true);
+    expect(out.join('\n')).toContain(`file://${expected}`);
+  });
+
+  it('still honours an explicit output path', async () => {
+    const { io } = capture();
+    const output = join(mkdtempSync(join(tmpdir(), 'explorer2-out-')), 'named.html');
+
+    await run(['render', goodDoc(), '-o', output], io.out, io.err);
+
+    expect(existsSync(output)).toBe(true);
+  });
+
+  it('reports a version, so a beta report names a build', async () => {
+    const { io, out } = capture();
+
+    const code = await run(['--version'], io.out, io.err);
+
+    expect(code).toBe(0);
+    expect(out.join('\n')).toMatch(/^explorer \d+\.\d+\.\d+/);
+  });
+
+  it('points the editor link wherever the reader keeps their editor', async () => {
+    const { io } = capture();
+    const output = join(mkdtempSync(join(tmpdir(), 'explorer2-editor-')), 'a.html');
+
+    await run(
+      ['render', goodDoc(), '-o', output, '--editor', 'zed://file{path}:{line}'],
+      io.out,
+      io.err,
+    );
+
+    const html = readFileSync(output, 'utf8');
+    expect(html).toContain('zed://file');
+    expect(html).not.toContain('vscode://');
+  });
+});
+
 describe('the rendered artifact is reachable', () => {
   it('turns a relative output path into an absolute file URL', () => {
     expect(fileUrl('out/doc.html')).toBe(`file://${join(process.cwd(), 'out/doc.html')}`);
@@ -208,10 +255,10 @@ sources:
     expect(err.some(line => line.includes('99-99'))).toBe(true);
   });
 
-  it('exits 2 when -o is missing', async () => {
+  it('exits 2 when -o is given without a path', async () => {
     const { io, err } = capture();
 
-    const code = await run(['render', goodDoc()], io.out, io.err);
+    const code = await run(['render', goodDoc(), '-o'], io.out, io.err);
 
     expect(code).toBe(2);
     expect(err.join('\n')).toMatch(/-o/);

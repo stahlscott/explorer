@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { rmSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { parseDocument } from '../src/parse.ts';
 import { resolveDocument } from '../src/resolve.ts';
@@ -390,6 +391,31 @@ ${body}`;
     const out = await render(docFor(repo.path, 'feature', ':::cite src/b.ts:2-4\n:::\n'));
 
     expect(out).toContain(`href="vscode://file${worktree}/src/b.ts:2"`);
+  });
+
+  it('ignores a worktree whose directory is gone', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(20) });
+    addUncheckedBranch(repo, 'feature', { 'src/b.ts': numberedLines(30) });
+    const worktree = addWorktree(repo, 'feature');
+    // Still listed, and still reporting the pinned HEAD, but there is nothing
+    // behind it. `git worktree list` marks this prunable after the HEAD line,
+    // which is why deciding on the HEAD line alone linked a path that is gone.
+    rmSync(worktree, { recursive: true, force: true });
+
+    const out = await render(docFor(repo.path, 'feature', ':::cite src/b.ts:2-4\n:::\n'));
+
+    expect(out).not.toContain('vscode://');
+  });
+
+  it('lets a reader point the editor link at their own editor', async () => {
+    const repo = makeRepo({ 'src/a.ts': numberedLines(20) });
+
+    const out = await render(docFor(repo.path, 'main', ':::cite src/a.ts:4-8\n:::\n'), {
+      editorUrl: 'zed://file{path}:{line}',
+    });
+
+    expect(out).toContain(`href="zed://file${repo.path}/src/a.ts:4"`);
+    expect(out).not.toContain('vscode://');
   });
 });
 

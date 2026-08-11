@@ -18,7 +18,15 @@ export interface RenderOptions {
   skin?: string;
   /** Section nav. On by default; the layout hides it when there is no room. */
   toc?: boolean;
+  /**
+   * Template for the editor link, with `{path}` and `{line}` substituted. A
+   * template rather than a list of known editors, because every editor's scheme
+   * differs and none of them are this tool's business.
+   */
+  editorUrl?: string;
 }
+
+export const DEFAULT_EDITOR_URL = 'vscode://file{path}:{line}';
 
 export function escapeHtml(text: string): string {
   return text
@@ -74,10 +82,12 @@ function githubBlobUrl(resolved: ResolvedCitation): string | null {
  * is the file the artifact shows. Without that check the link points into
  * whatever branch happens to be checked out, where the path may not exist.
  */
-function editorUrl(resolved: ResolvedCitation): string | null {
+function editorUrl(resolved: ResolvedCitation, template: string): string | null {
   const { citation, source } = resolved;
   if (!source.checkout) return null;
-  return `vscode://file${source.checkout}/${citation.path}:${citation.start}`;
+  return template
+    .replace('{path}', `${source.checkout}/${citation.path}`)
+    .replace('{line}', String(citation.start));
 }
 
 /**
@@ -123,6 +133,7 @@ function renderCitation(
   index: number,
   inlineMarkdown: (markdown: string) => string,
   cache: Map<string, string[]>,
+  editorTemplate: string,
 ): string {
   const { citation, source, before, after } = resolved;
   const firstLine = citation.start - before.length;
@@ -140,7 +151,7 @@ function renderCitation(
   const code = `<pre class="shiki"><code>${window}</code></pre>`;
 
   const blobUrl = githubBlobUrl(resolved);
-  const openUrl = editorUrl(resolved);
+  const openUrl = editorUrl(resolved, editorTemplate);
   const range =
     citation.start === citation.end
       ? `${citation.start}`
@@ -330,7 +341,14 @@ export async function renderDocument(
       const resolved = byCitation.get(block);
       if (!resolved) return '';
       citationIndex += 1;
-      return renderCitation(resolved, highlighter, citationIndex, inlineMarkdown, highlighted);
+      return renderCitation(
+        resolved,
+        highlighter,
+        citationIndex,
+        inlineMarkdown,
+        highlighted,
+        options.editorUrl ?? DEFAULT_EDITOR_URL,
+      );
     })
     .join('\n');
 
