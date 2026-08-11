@@ -7,8 +7,14 @@
  * because an earlier version set the margins in a rule that a later `p` rule
  * overrode at equal specificity, which left prose left-aligned and looking
  * hard-wrapped.
+ *
+ * No backticks below this line: the CSS is a template literal, and a backtick in
+ * a comment ends it. That has broken this file three times.
  */
 export const BASE_STYLE = `
+/* The nav's own width plus the gap either side of it. Layout reserves exactly
+   this much, so the nav's size is stated once and both rules read it. */
+:root { --nav-column: 16rem; }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
@@ -276,9 +282,20 @@ h1:hover .ask, h2:hover .ask, h3:hover .ask, .ask:focus-visible { opacity: 1; }
 }
 
 /* Only when there is room beside the reading column; below that the reader
-   scrolls, which is what the nav was for. */
+   scrolls, which is what the nav was for.
+
+   The nav is fixed and main is centred, so nothing makes them agree about
+   space: a centred column wide enough to hold code puts its left edge inside
+   the nav, and full-bleed figures render underneath the links. Reserving the
+   nav's column as padding and widening main to match keeps the reading column
+   the same size and centres it in what is left, which no viewport width can
+   undo. */
 @media (min-width: 78rem) {
   .toc { display: block; }
+  main {
+    max-width: calc(var(--measure-code) + var(--nav-column));
+    padding-left: calc(1.25rem + var(--nav-column));
+  }
 }
 
 .theme-toggle {

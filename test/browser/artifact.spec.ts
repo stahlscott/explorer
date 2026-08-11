@@ -182,6 +182,36 @@ test('colours every cited language, including one cited below a docstring', asyn
   expect(flat.filter(entry => entry.colours < 2)).toEqual([]);
 });
 
+test('never lays content underneath the section nav, in any skin', async ({ page }) => {
+  // The nav is fixed at the left edge and `main` is centred, so the two are sized
+  // independently: at the width where the nav appears, a full-bleed figure's left
+  // edge can fall inside the nav's column and the code renders under the links.
+  for (const skin of Object.keys(SKINS)) {
+    const artifact = render(CORPUS.doc, skin);
+    for (const width of [1248, 1320, 1500, 1800]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(pathToFileURL(artifact).href);
+
+      const collisions = await page.evaluate(() => {
+        const nav = document.querySelector('.toc');
+        if (!nav || getComputedStyle(nav).display === 'none') return [];
+        const bar = nav.getBoundingClientRect();
+        return [...document.querySelectorAll('main > *')]
+          .filter(node => node.getBoundingClientRect().height > 0)
+          .map(node => ({
+            tag: `${node.tagName.toLowerCase()}.${node.className}`,
+            box: node.getBoundingClientRect(),
+          }))
+          .filter(entry => entry.box.left < bar.right && entry.box.right > bar.left)
+          .map(entry => entry.tag)
+          .slice(0, 4);
+      });
+
+      expect(collisions, `${skin} at ${width}px`).toEqual([]);
+    }
+  }
+});
+
 test('a collapsed citation is no taller than the lines it shows', async ({ page }) => {
   await openOffline(page);
 
