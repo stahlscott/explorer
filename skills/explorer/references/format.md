@@ -91,6 +91,9 @@ pre-rendered, styles and script are inline. It opens from `file://`, prints, and
 being emailed. `render` prints the artifact's absolute `file://` URL so a terminal can open it,
 and `--open` opens it directly.
 
+Every reading surface ships in the file — auto, light, dark, newsprint, terminal, geocities —
+and the button cycles them. The reader chooses; whoever rendered it does not.
+
 Each citation carries `github` (a permalink at the pinned SHA), `editor` (only when some
 checkout is actually at that SHA, so the link opens the bytes the document shows), and `ask`,
 which copies a prompt naming the repo, SHA, path and lines for pasting back into a harness.

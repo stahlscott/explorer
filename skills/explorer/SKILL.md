@@ -265,7 +265,8 @@ part 8.
 `explorer check <doc.md>` resolves citations and file references; exit 0 means every claim
 about a path is true. `explorer render <doc.md>` writes the artifact beside the document and
 refuses if anything fails; it prints an absolute `file://` URL, `-o` overrides the path, and
-`--open` opens it. `--style panel` (default) or `terminal`.
+`--open` opens it. The reading surface is not yours to pick: every artifact ships all of them
+and the reader cycles with the button.
 
 Syntax, front matter, and the failure messages are in
 [references/format.md](references/format.md).

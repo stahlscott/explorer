@@ -6,7 +6,7 @@ import { parseDocument } from './parse.ts';
 import { resolveDocument } from './resolve.ts';
 import { renderDocument } from './render.ts';
 import { DEFAULT_EDITOR_URL } from './render.ts';
-import { DEFAULT_SKIN, isSkinName, SKINS } from './styles/skins.ts';
+import { MODES } from './styles/skins.ts';
 
 type Write = (line: string) => void;
 type Launch = (path: string) => void;
@@ -20,7 +20,6 @@ const USAGE = `usage: explorer <command> [options]
   pin    <doc.md>                  record each source's current sha in the front matter
 
 Options:
-  --style <name>     reading surface: ${Object.keys(SKINS).join(", ")} (default ${DEFAULT_SKIN})
   --no-toc           leave out the section nav
   --open             open the artifact when it is written
   --editor <url>     editor link template, {path} and {line} substituted
@@ -28,6 +27,9 @@ Options:
   --version          print the version
 
 Without -o, the artifact is written beside the document with an .html suffix.
+
+Every reading surface ships in every artifact — ${MODES.map(m => m.label).join(', ')} —
+and the reader cycles them with the button. There is no render-time choice.
 
 Exit codes: 0 ok, 1 the document or its citations failed, 2 wrong usage.`;
 
@@ -80,7 +82,7 @@ async function load(
   path: string,
   err: Write,
   /** Present when the caller wants HTML; absent for `check`. */
-  presentation?: { skin: string; toc: boolean; editorUrl: string },
+  presentation?: { toc: boolean; editorUrl: string },
 ): Promise<Loaded | null> {
   let text: string;
   try {
@@ -249,10 +251,13 @@ export async function run(
       return 2;
     }
 
-    const styleFlag = rest.indexOf('--style');
-    const styleName = styleFlag === -1 ? DEFAULT_SKIN : rest[styleFlag + 1];
-    if (styleName === undefined || !isSkinName(styleName)) {
-      err(`unknown style '${styleName ?? ''}'; choose one of ${Object.keys(SKINS).join(', ')}`);
+    // --style used to pick one surface at render time. Every surface now ships in
+    // every artifact, so the flag would silently do nothing; say so instead.
+    if (rest.includes('--style')) {
+      err(
+        'the reading surface is no longer chosen at render time: every artifact ships all of ' +
+          `them (${MODES.map(mode => mode.label).join(', ')}) and the reader cycles with the button`,
+      );
       return 2;
     }
 
@@ -267,7 +272,6 @@ export async function run(
     }
 
     const loaded = await load(path, err, {
-      skin: styleName,
       toc: !rest.includes('--no-toc'),
       editorUrl,
     });

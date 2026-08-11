@@ -67,9 +67,9 @@ explorer check  doc.md    # resolve every citation; exit 0 means every path clai
 explorer render doc.md    # write doc.html beside it, and print its file:// URL
 ```
 
-`render --open` opens the artifact. `--style terminal` is a second reading
-surface. `--editor 'zed://file{path}:{line}'` (or `EXPLORER_EDITOR_URL`) points
-the per-citation editor link at your editor; the default is VS Code.
+`render --open` opens the artifact. `--editor 'zed://file{path}:{line}'` (or
+`EXPLORER_EDITOR_URL`) points the per-citation editor link at your editor; the
+default is VS Code.
 
 Full syntax, front matter keys, and every failure message:
 [skills/explorer/references/format.md](skills/explorer/references/format.md).
@@ -79,6 +79,13 @@ Full syntax, front matter keys, and every failure message:
 One self-contained HTML file. No network at render time and none at view time —
 highlighting is pre-rendered, styles and script are inline. It opens from
 `file://`, prints, survives being emailed, and loses nothing offline.
+
+Six reading surfaces ship in every artifact and the button cycles them: `auto`
+(follows the reader's system), `light`, `dark`, `newsprint` (a broadsheet, since
+the document's shape is borrowed from journalism anyway), `terminal` (green on
+black, one colour, because syntax highlighting on a 5250 would be a lie), and
+`geocities` (under construction since 1997). Whoever renders the file does not
+choose for whoever reads it.
 
 Each citation shows the cited lines, expandable in place to twelve lines of
 context either side, and carries three links: a GitHub permalink at the pinned

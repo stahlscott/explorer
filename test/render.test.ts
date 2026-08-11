@@ -5,6 +5,7 @@ import { parseDocument } from '../src/parse.ts';
 import { resolveDocument } from '../src/resolve.ts';
 import { renderDocument } from '../src/render.ts';
 import { languageForPath } from '../src/highlight.ts';
+import { DEFAULT_SKIN, SKINS } from '../src/styles/skins.ts';
 import { addUncheckedBranch, addWorktree, makeRepo, numberedLines } from './helpers/repo.ts';
 
 /** Recover the visible text of one rendered region, tags and entities removed. */
@@ -575,7 +576,27 @@ sources:
 `);
 
     expect(out).toContain('class="theme-toggle"');
-    expect(out).toMatch(/data-theme-set="dark"|aria-label="[^"]*theme/i);
+    expect(out).toMatch(/aria-label="[^"]*reading surface/i);
+  });
+
+  it('ships every reading surface, and names the default in the markup', async () => {
+    const repo = makeRepo({ 'a.ts': numberedLines(10) });
+    const out = await render(`---
+title: Fixture
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+## Heading
+`);
+
+    // The attribute is in the markup, not set by script, so a reader with
+    // scripting off gets a designed page rather than unstyled tokens.
+    expect(out).toContain(`<html lang="en" data-skin="${DEFAULT_SKIN}">`);
+    for (const name of Object.keys(SKINS)) {
+      expect(out, name).toContain(`:root[data-skin="${name}"]`);
+    }
   });
 
   it('styles both themes without relying on the system preference alone', async () => {

@@ -2,29 +2,45 @@
  * Inlined into every artifact. No external URLs and no webfonts: the document
  * has to open from file:// with the network denied and lose nothing.
  */
+import { MODES } from './styles/skins.ts';
+
 export const PAGE_SCRIPT = `
 (function () {
   var root = document.documentElement;
-  var STORE = 'explorer-theme';
+  var STORE = 'explorer-mode';
+
+  // Every reading surface ships in the file, behind data-skin. The markup already
+  // carries the default, so a reader with scripting off still gets a designed
+  // page; this only moves between them.
+  var MODES = ${JSON.stringify(MODES)};
+
+  function apply(mode) {
+    root.dataset.skin = mode.skin;
+    if (mode.theme) root.dataset.theme = mode.theme;
+    else delete root.dataset.theme;
+    if (toggle) toggle.textContent = mode.label;
+  }
+
+  var toggle = document.querySelector('.theme-toggle');
+  var index = 0;
 
   // Read before first paint would be better, but a self-contained file has one
   // script and it runs here. The flash is one frame.
   try {
     var saved = localStorage.getItem(STORE);
-    if (saved === 'dark' || saved === 'light') root.dataset.theme = saved;
-  } catch (e) { /* private mode: fall back to the system preference */ }
+    for (var i = 0; i < MODES.length; i += 1) {
+      if (MODES[i].id === saved) index = i;
+    }
+  } catch (e) { /* private mode: start from the default */ }
 
-  function systemPrefersDark() {
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  }
+  apply(MODES[index]);
 
-  var toggle = document.querySelector('.theme-toggle');
   if (toggle) {
     toggle.addEventListener('click', function () {
-      var current = root.dataset.theme || (systemPrefersDark() ? 'dark' : 'light');
-      var next = current === 'dark' ? 'light' : 'dark';
-      root.dataset.theme = next;
-      try { localStorage.setItem(STORE, next); } catch (e) { /* nothing to do */ }
+      index = (index + 1) % MODES.length;
+      var mode = MODES[index];
+      apply(mode);
+      try { localStorage.setItem(STORE, mode.id); } catch (e) { /* nothing to do */ }
     });
   }
 

@@ -67,6 +67,18 @@ describe('render needs no ceremony', () => {
     expect(existsSync(output)).toBe(true);
   });
 
+  it('says so when asked for a render-time style, rather than ignoring the flag', async () => {
+    const { io, err } = capture();
+
+    const code = await run(['render', goodDoc(), '--style', 'terminal'], io.out, io.err);
+
+    // Silently accepting a flag that no longer does anything is worse than
+    // failing: the reader would get a surface nobody chose.
+    expect(code).toBe(2);
+    expect(err.join('\n')).toMatch(/no longer chosen at render time/i);
+    expect(err.join('\n')).toMatch(/terminal/);
+  });
+
   it('reports a version, so a beta report names a build', async () => {
     const { io, out } = capture();
 

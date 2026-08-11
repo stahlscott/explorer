@@ -10,12 +10,11 @@ import type {
 import { bundledLanguage, getHighlighter, languageForPath, THEMES } from './highlight.ts';
 import { PAGE_SCRIPT } from './assets.ts';
 import { BASE_STYLE, SHIKI_THEME_SWITCH } from './styles/base.ts';
-import { DEFAULT_SKIN, skinCss } from './styles/skins.ts';
+import { allSkinsCss, DEFAULT_SKIN } from './styles/skins.ts';
 
 export interface RenderOptions {
   /** Lines of context kept either side of a citation. Must match the resolver. */
   contextLines?: number;
-  skin?: string;
   /** Section nav. On by default; the layout hides it when there is no room. */
   toc?: boolean;
   /**
@@ -353,15 +352,15 @@ export async function renderDocument(
     .join('\n');
 
   return `<!doctype html>
-<html lang="en">
+<html lang="en" data-skin="${DEFAULT_SKIN}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(doc.title ?? 'explorer')}</title>
-<style>${BASE_STYLE}${SHIKI_THEME_SWITCH}${skinCss(options.skin ?? DEFAULT_SKIN)}</style>
+<style>${BASE_STYLE}${SHIKI_THEME_SWITCH}${allSkinsCss()}</style>
 </head>
 <body>
-<button class="theme-toggle" type="button" aria-label="Switch between the light and dark theme">theme</button>
+<button class="theme-toggle" type="button" aria-label="Change the reading surface">theme</button>
 ${options.toc === false ? '' : renderToc(sections)}
 <main>
 ${renderHeader(doc, resolution.sources)}

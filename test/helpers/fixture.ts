@@ -319,10 +319,12 @@ Whether any caller needs the difference. Nothing logs either case.
 }
 
 /** Render a corpus document to a temporary artifact and return its path. */
-export function render(doc: string, style?: string): string {
+export function render(doc: string): string {
   const out = join(mkdtempSync(join(tmpdir(), 'explorer-artifact-')), 'artifact.html');
-  const args = ['--experimental-strip-types', 'src/cli.ts', 'render', doc, '-o', out];
-  if (style !== undefined) args.push('--style', style);
-  execFileSync(process.execPath, args, { cwd: ROOT, encoding: 'utf8' });
+  execFileSync(
+    process.execPath,
+    ['--experimental-strip-types', 'src/cli.ts', 'render', doc, '-o', out],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
   return out;
 }

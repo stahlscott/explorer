@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import { SKINS } from '../../src/styles/skins.ts';
+import { MODES } from '../../src/styles/skins.ts';
 import { buildCorpus, buildSingleSourceCorpus, render } from '../helpers/fixture.ts';
 
 // Built here rather than read from a checkout: the byte-identity test below
@@ -9,6 +9,18 @@ import { buildCorpus, buildSingleSourceCorpus, render } from '../helpers/fixture
 // something if the repository it reads is one this suite created.
 const CORPUS = buildCorpus();
 const ARTIFACT = render(CORPUS.doc);
+
+/** Put the page into one reading mode, the way the button does. */
+async function applyMode(page: Page, mode: (typeof MODES)[number]): Promise<void> {
+  await page.evaluate(
+    ({ skin, theme }) => {
+      document.documentElement.dataset.skin = skin;
+      if (theme) document.documentElement.dataset.theme = theme;
+      else delete document.documentElement.dataset.theme;
+    },
+    { skin: mode.skin, theme: mode.theme },
+  );
+}
 
 /**
  * Deny everything that is not the artifact itself. Any off-disk request is a
@@ -186,11 +198,11 @@ test('never lays content underneath the section nav, in any skin', async ({ page
   // The nav is fixed at the left edge and `main` is centred, so the two are sized
   // independently: at the width where the nav appears, a full-bleed figure's left
   // edge can fall inside the nav's column and the code renders under the links.
-  for (const skin of Object.keys(SKINS)) {
-    const artifact = render(CORPUS.doc, skin);
+  for (const mode of MODES) {
     for (const width of [1248, 1320, 1500, 1800]) {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto(pathToFileURL(artifact).href);
+      await page.goto(pathToFileURL(ARTIFACT).href);
+      await applyMode(page, mode);
 
       const collisions = await page.evaluate(() => {
         const nav = document.querySelector('.toc');
@@ -207,7 +219,7 @@ test('never lays content underneath the section nav, in any skin', async ({ page
           .slice(0, 4);
       });
 
-      expect(collisions, `${skin} at ${width}px`).toEqual([]);
+      expect(collisions, `${mode.id} at ${width}px`).toEqual([]);
     }
   }
 });
@@ -384,25 +396,69 @@ test('keeps the line range on the same line as the file name', async ({ page }) 
   expect(split).toEqual([]);
 });
 
-test('switches theme on click and remembers the choice', async ({ page }) => {
+test('cycles every reading surface on click, and remembers the choice', async ({ page }) => {
   await openOffline(page);
 
-  const paper = () =>
-    page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const state = () =>
+    page.evaluate(() => ({
+      skin: document.documentElement.dataset.skin,
+      theme: document.documentElement.dataset.theme ?? null,
+      label: document.querySelector('.theme-toggle')!.textContent,
+      paper: getComputedStyle(document.body).backgroundColor,
+      prose: getComputedStyle(document.body).fontFamily,
+    }));
 
-  const before = await paper();
-  await page.locator('.theme-toggle').click();
-  const after = await paper();
+  const button = page.locator('.theme-toggle');
+  const seen: Awaited<ReturnType<typeof state>>[] = [await state()];
 
-  expect(after).not.toBe(before);
+  // One click per remaining mode, then one more to prove it wraps.
+  for (let i = 1; i < MODES.length; i += 1) {
+    await button.click();
+    seen.push(await state());
+  }
+
+  expect(seen.map(entry => entry.skin)).toEqual(MODES.map(mode => mode.skin));
+  expect(seen.map(entry => entry.theme)).toEqual(MODES.map(mode => mode.theme));
+  expect(seen.map(entry => entry.label)).toEqual(MODES.map(mode => mode.label));
+
+  // Every skin has to actually change what the reader sees, or an entry in the
+  // cycle is a label over nothing.
+  expect(new Set(seen.map(entry => entry.paper)).size).toBeGreaterThan(2);
+  expect(new Set(seen.map(entry => entry.prose)).size).toBeGreaterThan(2);
+
+  await button.click();
+  expect((await state()).skin).toBe(MODES[0]!.skin);
 
   // The choice has to survive a reload, or it is a gimmick.
-  const chosen = await page.evaluate(() => document.documentElement.dataset.theme);
+  await button.click();
+  const chosen = await state();
   await page.reload();
-  await expect
-    .poll(() => page.evaluate(() => document.documentElement.dataset.theme))
-    .toBe(chosen);
-  expect(await paper()).toBe(after);
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.skin)).toBe(
+    chosen.skin,
+  );
+  expect((await state()).paper).toBe(chosen.paper);
+});
+
+test('keeps syntax colour in the default surface, though terminal kills it', async ({ page }) => {
+  await openOffline(page);
+
+  // Terminal forces one colour with !important, and its rules now ship in every
+  // artifact. Scoping is the only thing stopping them applying everywhere.
+  const distinct = (page: Page) =>
+    page.evaluate(
+      () =>
+        new Set(
+          [...document.querySelectorAll('figure.cite .line:not(.ctx) span[style]')].map(
+            span => getComputedStyle(span).color,
+          ),
+        ).size,
+    );
+
+  await applyMode(page, MODES.find(mode => mode.skin === 'panel')!);
+  expect(await distinct(page)).toBeGreaterThan(2);
+
+  await applyMode(page, MODES.find(mode => mode.skin === 'terminal')!);
+  expect(await distinct(page)).toBe(1);
 });
 
 test('highlights the section the reader is in', async ({ page, viewport }) => {
@@ -437,9 +493,9 @@ test('the nav links land on their sections', async ({ page }) => {
 });
 
 test('shows the citation path exactly as it is on disk, in every skin', async ({ page }) => {
-  for (const skin of Object.keys(SKINS)) {
-    const out = render(CORPUS.doc, skin);
-    await page.goto(pathToFileURL(out).href);
+  await page.goto(pathToFileURL(ARTIFACT).href);
+  for (const mode of MODES) {
+    await applyMode(page, mode);
 
     // A skin may restyle a path; it may not rewrite one. text-transform makes
     // the rendered characters differ from the file on disk while textContent
@@ -450,14 +506,14 @@ test('shows the citation path exactly as it is on disk, in every skin', async ({
         .map(node => node.textContent),
     );
 
-    expect(altered, `${skin} alters the displayed path`).toEqual([]);
+    expect(altered, `${mode.id} alters the displayed path`).toEqual([]);
   }
 });
 
 test('renders no text that disappears into its own background', async ({ page }) => {
-  for (const skin of Object.keys(SKINS)) {
-    const out = render(CORPUS.doc, skin);
-    await page.goto(pathToFileURL(out).href);
+  await page.goto(pathToFileURL(ARTIFACT).href);
+  for (const mode of MODES) {
+    await applyMode(page, mode);
 
     const unreadable = await page.evaluate(() => {
       const parse = (colour: string) =>
@@ -501,7 +557,7 @@ test('renders no text that disappears into its own background', async ({ page })
         .slice(0, 6);
     });
 
-    expect(unreadable, `${skin} has text with almost no contrast`).toEqual([]);
+    expect(unreadable, `${mode.id} has text with almost no contrast`).toEqual([]);
   }
 });
 
