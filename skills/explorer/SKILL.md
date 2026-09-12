@@ -17,6 +17,13 @@ into the document — you emit a path and a line range, and the tool fetches it.
 fabrication from the problem, and leaves you the only job that was ever hard: deciding what
 to say and in what order.
 
+Write the way a good book chapter explains a system. Open with a short orientation that gives
+a cold reader just enough footing, then develop the subject in connected paragraphs that
+follow a concrete behavior through the code. Teach the idea before the specialized term for
+it. Explain mechanism and consequence together — what the code does, and what a caller or
+reader experiences because of it. Citations and excerpts support the explanation; they never
+replace it.
+
 Three questions decide what matters. Rank what you find by which one it answers:
 
 1. **Does the code do what it claims?** The claim is whatever is written down — a pull request
@@ -113,17 +120,20 @@ deliberately not adjacent.
    Search from the code's own vocabulary, not the pull request's, which you have not read yet.
    A reader who has to ask "was there prior art?" got a document that stopped one search short.
 
-7. **Read the test names, not the test bodies.**
-   `git show <sha>:<file> | grep -nE "^[[:space:]]*(it|test|def test)"`. The names are a
-   written record of what the author believed mattered, and the gaps between them are usually
-   the better finding. (`git grep -E` does not understand `\s`; use `[[:space:]]`.)
+7. **Use the test names as a map, and open the assertions before claiming tested behavior.**
+   `git show <sha>:<file> | grep -nE "^[[:space:]]*(it|test|def test)"` lists what the author
+   believed mattered, and the gaps between the names are usually the better finding. But a
+   name is not evidence: when the document says a suite tests a behavior, read the assertion
+   behind that name and describe what it actually checks. (`git grep -E` does not understand
+   `\s`; use `[[:space:]]`.)
 8. **Read the PR prose last.** It is claimed intent, not evidence. Reading it first tells you
    what to see. Reading it last lets you notice where it and the code disagree — which is
    often the most valuable sentence in the document.
 9. **Hunt absences on purpose.** The strongest findings are things that are *not* there: no
    analytics call, no test for a path, no reader of a flag. Absence cannot be cited, so it
    must be searched for — and the search stated. See Claiming an absence.
-10. **Draft against the budget**, in the shape below.
+10. **Draft the explanation**, covering the concerns below — use them where they help the
+    reader, and do not force a section list.
 11. **`explorer check <doc.md>`** until it exits 0, then **check your own captions**, then
     **read the whole thing cold.** `check` proves the code is real and says nothing about the
     sentence beside it. A count you quote from a diff — lines added, lines removed, files
@@ -137,13 +147,17 @@ deliberately not adjacent.
 
 ## What the document is
 
-A recipe, not a template. Produce these parts, in this order, and omit any that has nothing
-in it.
+A recipe, not a template. The items below are concerns a reader may need covered — not a
+mandatory inventory, not required headings, and not a fixed order. Merge, split, or reorder
+them as the explanation needs, omit any with nothing in it, and use headings a reader
+understands (what the subject does, why it matters) rather than labels of your own process.
 
-1. **A lead that carries the findings.** First paragraph, before any structure. It names the
-   two or three things a reader must know, in plain sentences. If your opening paragraph only
-   says what the subject *is*, you have buried the lead.
-2. **The shape.** Where the pieces live and how they relate. A list, if it is a list.
+1. **A lead that orients, then carries the findings.** First paragraph, before any structure.
+   One or two sentences of context so a cold reader can follow — what the system around this
+   change does — then the two or three things they must know, in plain sentences. If the
+   opening is *only* what the subject is, you have buried the lead; if it never orients at
+   all, you have buried the reader.
+2. **The layout.** Where the pieces live and how they relate. A list, if it is a list.
 3. **What to read.** For a changeset: `core` files with a one-line reason each, and the rest
    named as a group. For a subsystem: the files *and the symbols inside them* that carry the
    behaviour. Write each path as `` `<source-id> <path>` `` — the tool resolves and links it.
@@ -171,19 +185,23 @@ When you need to cut, cut from the bottom.
 
 ## Doctrine
 
-- **Length is a budget.** Around 1,500 words, whether the subject is three files or sixty-five.
-  A fixed budget is what forces ranking; you cannot pay per-file attention out of it.
-- **Cite the code instead of describing it.** "This calculates the order count" tells a reader
-  who can already read code nothing. Show the four lines and spend your words on what is
-  surprising about them.
+- **Ranking, not a word count, keeps it readable.** Spend words where they reduce a reader's
+  effort: more is acceptable when they explain a mechanism the reader would otherwise have to
+  reconstruct alone. Cut what does not change a decision — never to hit a number.
+- **Explain, then cite selectively.** Say in prose what the code does and why it matters, so a
+  reader can follow without opening the excerpt. Cite where seeing the exact lines changes
+  understanding — an interface, a contract, a surprising line — not as a substitute for the
+  sentence.
 - **Rank by surprise, not by size.** Two lines that change a shared contract outrank eight
   hundred lines of scaffolding.
 - **A decision outranks a defect.** The most consequential thing is usually a choice someone
   made — a second implementation of something that already existed, a shared contract changed
   in passing — not a bug. Bugs have owners and tooling. Choices only have readers.
-- **Write dry.** Short sentences, active voice, simple tenses, one idea per sentence. Connective
-  flourishes — "together they are a trap", "everything below is about the seams" — carry no
-  information and read as filler. State the finding and stop.
+- **Write connected prose, without filler.** Carry the reader from one idea to the next: what
+  the mechanism is, what it causes, why it matters. Transitions that do real work — "because",
+  "so the caller", "unlike the registry" — are how a changeset becomes understandable.
+  Ornament ("together they are a trap") is filler; so is any sentence a reader could delete
+  and lose nothing.
 - **Test code is support; test coverage is core.** What the suites assert is a finding. What
   they omit is usually a better one.
 - **State the answer, not the choice.** If one of two systems is deprecated, the section says
@@ -197,6 +215,12 @@ When you need to cut, cut from the bottom.
 - **Attribute what was already written down.** Compressing the author's own comments is
   useful work — it is the abstract of the changeset. Passing it off as discovered is not.
   Findings are what the annotations omit.
+- **Caveats sit beside their claims.** A material uncertainty, scope limit, or failed check
+  belongs next to the sentence it qualifies — not in a late section where the reader meets it
+  after already believing the claim.
+- **Routine provenance goes late and brief.** Commands run, counts verified, and audit
+  material gather in one concise evidence section near the end, unless a claim needs them in
+  place to be understood.
 
 ## Drift
 
@@ -241,13 +265,13 @@ part 8.
 
 | You are about to… | Instead |
 |---|---|
-| Open with what the subject is | Open with what the reader must know |
-| Describe a function in prose | Cite it and say what is surprising |
+| Open with a long subject introduction | Orient briefly, then lead with what the reader must know |
+| Quote code where a sentence would carry the idea | Explain in prose; cite where the exact lines change understanding |
 | Give every file a paragraph | Rank: core, then the rest as a group |
 | Write "there is no…" | Run the search, then state the search |
 | Quote the PR to explain intent | Reconstruct intent from code; note where they differ |
 | Tour a conventional pattern | One sentence, one citation, move on |
-| Add a section because it feels missing | Cut from the bottom; the budget is fixed |
+| Pad to a fixed shape or length | Cover what changes a decision; let the document taper |
 | Repin a drifted document to make `check` pass | Re-read the citations first; `check` was right |
 | Call a file support without opening it | Open it; outside the feature's directories it is a finding until it isn't |
 | Diff against `master` because `base:` says so | Diff against the merge-base; master has moved since the fork |

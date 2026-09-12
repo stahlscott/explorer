@@ -9,13 +9,15 @@ Navigator is a learning and orientation skill. It does not implement a change. I
 
 ## Start with the map
 
-Begin with a bounded architectural map of the relevant system, even when there is no ticket. State the scope: the modules and boundary being examined, and the boundaries the available evidence does not cover. Where the source supports it, identify each responsibility, the interactions between responsibilities, synchronous and asynchronous edges, authoritative state and values derived from it, and the consequence of changing or failing at each edge. Do not fill gaps with a presumed organizational design.
+Begin with a bounded architectural map of the relevant system, even when there is no ticket. State the scope: the modules and boundary being examined, and the boundaries the available evidence does not cover. The map's checklist — responsibilities, interactions, synchronous and asynchronous edges, authoritative state, derived values, the consequence of failing at each edge — is a research obligation, not a form: establish what the source supports, explain it in connected prose, and say plainly what the evidence does not cover. Do not fill gaps with a presumed organizational design, and do not present the checklist itself as headings or recited terminology.
 
 Then follow one concrete behavior end to end. At each meaningful detail, connect it back to the wider map: what crosses a boundary, which state is authoritative, what is derived, and what a caller or reader experiences when the behavior fails. Stop when the evidence stops. Name unresolved questions rather than smoothing them over.
 
 ## Audience and evidence
 
-Write for a senior engineer reading cold. Default to explanatory prose, not code dumps; the explanation must remain useful without code blocks. Keep claims auditable with checked source links and selective citations. Inspect the actual implementation and test assertions before saying behavior is tested. A test name is not evidence by itself. Distinguish observed implementation, documented intent, inference, and unresolved questions explicitly.
+Write for a senior engineer reading cold. Explain the way a book that wants to be understood does: open with a short orientation, teach each idea before naming it, and develop the explanation in connected paragraphs that follow one concrete behavior — mechanism and consequence together, transitions that do real work. Prose carries the explanation; code blocks and citations support it, and the guide must remain useful without reading them.
+
+Keep claims auditable with checked source links and selective citations. Inspect the actual implementation and test assertions before saying behavior is tested. A test name is not evidence by itself. Distinguish observed implementation, documented intent, inference, and unresolved questions explicitly. Place material caveats and uncertainties beside the claims they qualify; keep routine provenance and command logs brief, late, and subordinate. Be patient and concrete — never joking, praising, or ornamental — and never imply certainty the evidence does not carry.
 
 Search for existing patterns before proposing a change. Unfamiliarity is not a defect. Verify consumers and the test strategy before recommending even a small change. Never edit code or start implementation from a learning session without explicit approval.
 

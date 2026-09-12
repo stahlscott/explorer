@@ -7,7 +7,7 @@ The corpus those measurements ran against is deliberately not in this repository
 — it analysed a private codebase — so this file is the only surviving record of
 what was established. Losing it means starting the measurement over.
 
-Last updated: 2026-08-11.
+Last updated: 2026-09-12.
 
 ## The tool is verified
 
@@ -87,6 +87,46 @@ organizational rationale, meaningful pauses, user steering that changes depth or
 direction, no source/runtime modifications, and artifacts only under
 `navigator-f4/output/`. These are skill-behavior checks, not tool checks; until the
 orchestrator runs and grades the exercises they remain unmeasured.
+
+## READABILITY-001: the explanation-voice revision, measured
+
+Both skills' writing instructions were revised together: a short orientation, the idea
+before the terminology, connected paragraphs following one concrete behavior, and the
+removal of the fixed ~1,500-word budget, the cite-don't-describe rule, the write-dry
+mandate, the test-names-only shortcut, and the mandatory document inventory. This entry
+records what was actually measured about that revision.
+
+**Method.** Five cases, each run once against the frozen base skill bytes (ticket base
+`3afb543`) and once against the candidate bytes — twelve executions in all, because an
+independent instruction review found residual fixed-shape wording and the two explorer
+cases were re-run against the corrected candidate (v2). Prompts, subjects, and the grading
+key were frozen before any baseline ran; the key was written from source and withheld from
+subjects; each subject agent saw only its assigned skill snapshot and its own output lease.
+Subjects were the three direct-evidence fixtures above (A, B, C) and two pinned-SHA
+repository cases at `f974ba10`, each HTML case rendering its own explanation through the
+gated CLI.
+
+**Independent factual grading.** Every applicable candidate clause passed — 89 of 89
+across the final evidence set (navigator candidate v1, explorer candidate v2), with zero
+fabricated claims in any output; every novel factual claim was checked against the fixture
+bytes or the pinned SHA. The baselines passed 88 of 89, the one failure being audit-first
+ordering in baseline E-PR — recorded for comparison, not as a blocker. Two disclosed
+deviations: three runs read the pinned `package.json` beyond the prompt-enumerated list
+(dispatcher-permitted, read-only at the pinned SHA, disclosed; recorded in the session
+workspace).
+
+**Machine checks.** `polytoken validate skill` exited 0 for both files; the focused smoke
+(parse/cli/render, 94 tests) and the full aggregate (`npm run verify`: type-check, 152
+tests, 25 browser tests) exited 0 on the revised tree.
+
+**Not measured by any of that:** whether a human reader finds the outputs patient,
+concrete, and clear at the right pace. Agent grading verified accuracy and safeguard
+retention only; operator readability judgment was still pending when this entry was
+written and does not belong to this file. Readability scores were not used as a
+substitute. Paired runs are comparison evidence, not a controlled benchmark — samples
+vary run to run. Evidence artifacts (manifests, frozen snapshots, run records, the grading
+record, and two independent review reports) live in the session workspace under
+`readability-001/`.
 
 ## How to measure a rule
 
