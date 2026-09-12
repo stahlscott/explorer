@@ -186,6 +186,35 @@ const illustrative = true;
   });
 });
 
+describe('prose-led navigator documents', () => {
+  it('renders readable narrative with section navigation and pinned source identity without citations', async () => {
+    const repo = makeRepo({ 'src/architecture.ts': numberedLines(8) });
+    const out = await render(`---
+title: Navigator orientation
+sources:
+  - id: web
+    repo: acme/web
+    path: ${repo.path}
+    head: main
+---
+
+The architecture map names the boundary before following one behavior.
+
+## The map
+
+Responsibilities and consequences are explained in prose.
+`);
+
+    expect(out).toContain('The architecture map names the boundary');
+    expect(out).toContain('<nav class="toc"');
+    expect(out).toContain('href="#the-map"');
+    expect(out).toContain('data-ask=');
+    expect(out).toContain('acme/web');
+    expect(out).toContain(repo.sha);
+    expect(out).not.toContain('<figure class="cite"');
+  });
+});
+
 describe('languageForPath', () => {
   it.each([
     ['src/a.ts', 'typescript'],

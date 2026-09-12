@@ -348,6 +348,111 @@ ${testCase.body}
     expect(messages[2]).toContain("unknown source 'nope'");
     expect(messages[3]).toContain('no-such-ref');
   });
+
+  it('renders a prose-led navigator document through the gated CLI', async () => {
+    const repo = makeRepo({ 'src/architecture.ts': numberedLines(12) });
+    const prose = writeDoc(`---
+title: Navigator orientation
+sources:
+  - id: web
+    repo: acme/web
+    path: ${repo.path}
+    head: main
+---
+
+## The map
+
+The reader starts with responsibilities, interactions, and the unknown boundary.
+
+## One behavior
+
+The narrative follows one behavior back to the wider architecture.
+`);
+    const proseOut = join(mkdtempSync(join(tmpdir(), 'explorer-navigator-')), 'prose.html');
+    const proseIo = capture();
+
+    expect(await run(['render', prose, '-o', proseOut], proseIo.io.out, proseIo.io.err)).toBe(0);
+    const proseHtml = readFileSync(proseOut, 'utf8');
+    expect(proseHtml).toContain('The reader starts with responsibilities');
+    expect(proseHtml).toContain(`class="pin-sha">${repo.sha}`);
+    expect(proseHtml).not.toContain('<figure class="cite"');
+
+    const selective = writeDoc(`---
+title: Navigator with evidence
+sources:
+  - id: web
+    repo: acme/web
+    path: ${repo.path}
+    head: main
+---
+
+## The map
+
+The narrative leads with the system shape before selective evidence.
+
+:::cite web src/architecture.ts:3-5
+The citation anchors one decision without turning the document into a code dump.
+:::
+`);
+    const selectiveOut = join(mkdtempSync(join(tmpdir(), 'explorer-navigator-')), 'selective.html');
+    const selectiveIo = capture();
+
+    expect(await run(['render', selective, '-o', selectiveOut], selectiveIo.io.out, selectiveIo.io.err)).toBe(0);
+    expect(readFileSync(selectiveOut, 'utf8')).toContain('<figure class="cite"');
+
+    const invalidSource = writeDoc(`---
+title: Invalid source
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+:::cite nope src/architecture.ts:1-2
+:::
+`);
+    const invalidOut = join(mkdtempSync(join(tmpdir(), 'explorer-navigator-')), 'invalid.html');
+    const invalidIo = capture();
+    expect(await run(['render', invalidSource, '-o', invalidOut], invalidIo.io.out, invalidIo.io.err)).toBe(1);
+    expect(invalidIo.err.join('\\n')).toContain("unknown source 'nope'");
+    expect(existsSync(invalidOut)).toBe(false);
+
+    const unresolved = writeDoc(`---
+title: Resolution failure
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+---
+:::cite web src/missing.ts:1-2
+:::
+`);
+    const unresolvedOut = join(mkdtempSync(join(tmpdir(), 'explorer-navigator-')), 'unresolved.html');
+    const unresolvedIo = capture();
+    expect(await run(['render', unresolved, '-o', unresolvedOut], unresolvedIo.io.out, unresolvedIo.io.err)).toBe(1);
+    expect(unresolvedIo.err.some(line => line.includes('src/missing.ts'))).toBe(true);
+    expect(existsSync(unresolvedOut)).toBe(false);
+
+    const stale = repo.sha;
+    writeFileSync(`${repo.path}/src/architecture.ts`, numberedLines(14));
+    execFileSync('git', ['-C', repo.path, 'commit', '--quiet', '-am', 'moved heading']);
+    const moved = writeDoc(`---
+title: Moved source
+sources:
+  - id: web
+    path: ${repo.path}
+    head: main
+    sha: ${stale}
+---
+## The map
+
+The pinned source moved and must gate output.
+`);
+    const movedOut = join(mkdtempSync(join(tmpdir(), 'explorer-navigator-')), 'moved.html');
+    const movedIo = capture();
+    expect(await run(['render', moved, '-o', movedOut], movedIo.io.out, movedIo.io.err)).toBe(1);
+    expect(movedIo.err.join('\\n')).toContain('was pinned to');
+    expect(existsSync(movedOut)).toBe(false);
+  });
 });
 
 describe('explorer pin', () => {

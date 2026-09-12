@@ -5,6 +5,8 @@ description: Use when a reader needs to understand a changeset, a stack of pull 
 
 # Explorer
 
+Explorer is one producer of the shared document contract. Its format reference is shared with the sibling navigator skill at [../explorer/references/format.md](../explorer/references/format.md).
+
 ## Overview
 
 You write a document for one senior developer reading it cold. The tool guarantees

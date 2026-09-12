@@ -58,6 +58,31 @@ test('opens from file:// with the network denied and logs nothing', async ({ pag
   expect(errors).toEqual([]);
 });
 
+test('renders a prose-led navigator fixture with readable narrative, navigation, provenance, and no resources', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await openOffline(page);
+
+  await expect(page.locator('main')).toContainText('A statement is one row per account per period');
+  expect(await page.locator('.toc a').count()).toBeGreaterThan(0);
+  await expect(page.locator('h2').first().locator('.ask')).toHaveAttribute(
+    'data-ask',
+    new RegExp(CORPUS.repoSlug),
+  );
+  await expect(page.locator('.cite-where b').first()).toHaveText('api');
+  await expect(page.locator('.pins .pin-sha').first()).toHaveText(/^[0-9a-f]{40}$/);
+
+  const firstSection = page.locator('.toc a').first();
+  const href = await firstSection.getAttribute('href');
+  await firstSection.click();
+  await expect(firstSection).toHaveAttribute('aria-current', 'true');
+  expect(await page.evaluate(() => window.location.hash)).toBe(href);
+
+  for (const mode of MODES) {
+    await applyMode(page, mode);
+    await expect(page.locator('main')).toContainText('A statement is one row per account per period');
+  }
+});
+
 test('hides context lines until the reader asks for them', async ({ page }) => {
   await openOffline(page);
 

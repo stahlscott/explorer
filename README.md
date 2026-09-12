@@ -3,6 +3,11 @@
 A tool for explaining code to a person who has to understand it — a changeset, a
 stack of pull requests, an unfamiliar subsystem.
 
+The repository ships two sibling skills: [explorer](skills/explorer/SKILL.md) for
+changeset and subsystem explanation, and [navigator](skills/navigator/SKILL.md) for
+architecture-led orientation before a change. Both produce the shared offline
+document contract described in [the format reference](skills/explorer/references/format.md).
+
 The guarantee, in one sentence:
 
 > No sentence asserts anything about the code without showing that code, and
@@ -126,6 +131,7 @@ trusting the skill's advice more than your own.
 ```
 src/            parse, resolve against git, render
 skills/explorer the procedure and doctrine a writer follows
+skills/navigator architecture-led orientation before implementation
 docs/           the stack decision, and what has been verified
 test/           unit tests, plus a browser suite over generated fixtures
 .output/        rendered artifacts (gitignored)

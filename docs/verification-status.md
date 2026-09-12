@@ -62,6 +62,32 @@ The skill's vocabulary was made repository-neutral after every run above. The
 rules are structural rather than lexical, so the change should not matter — but
 no run has read the current wording.
 
+## Navigator behavioral exercises
+
+The navigator sibling adds three behavioral exercises under the session workspace
+`navigator-f4/`; they are not repository fixtures and were not run as part of this
+slice. The prewritten grading key is kept beside them and must be read before any
+exercise output:
+
+1. **Exercise A — no-ticket architecture.** Start with a bounded map of the
+   fixture's responsibilities and interactions. Identify one synchronous edge,
+   one asynchronous edge, authoritative state, a derived value, and follow one
+   cross-module behavior back to the map. Name an unknown boundary.
+2. **Exercise B — PR reading.** Explain baseline behavior before the change, find a
+   consumer and concrete failure consequence, distinguish observed code from
+   documented intent and inference, and recognize an unfamiliar conventional
+   pattern without calling it a defect.
+3. **Exercise C — change preparation.** Search for and name prior art, identify
+   affected contracts, choose the obvious focused test, keep scope narrow despite
+   tempting cleanup, and stop for explicit edit approval even if asked to hurry.
+
+`rubric.md` covers those clauses plus cross-cutting behavior: prose-first
+explanation, an auditable source snapshot, honest unknowns, no invented
+organizational rationale, meaningful pauses, user steering that changes depth or
+direction, no source/runtime modifications, and artifacts only under
+`navigator-f4/output/`. These are skill-behavior checks, not tool checks; until the
+orchestrator runs and grades the exercises they remain unmeasured.
+
 ## How to measure a rule
 
 Dispatch three or more agents with only the skill, a subject, and read-only

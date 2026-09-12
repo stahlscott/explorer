@@ -134,6 +134,21 @@ Here is how you write one:
 
     expect(doc.blocks.every(b => b.kind === 'prose')).toBe(true);
   });
+
+  it('accepts a prose-led document with valid sources and zero citations', () => {
+    const doc = parseDocument(`${FRONT_MATTER}
+## The architecture
+
+The narrative explains the boundary without citing a code block.
+`);
+
+    expect(doc.sources).toHaveLength(1);
+    expect(doc.blocks).toHaveLength(1);
+    expect(doc.blocks[0]!.kind).toBe('prose');
+    expect((doc.blocks[0] as { markdown: string }).markdown).toContain(
+      'The narrative explains the boundary without citing a code block.',
+    );
+  });
 });
 
 describe('parseDocument rejections', () => {
