@@ -17,12 +17,14 @@ into the document — you emit a path and a line range, and the tool fetches it.
 fabrication from the problem, and leaves you the only job that was ever hard: deciding what
 to say and in what order.
 
-Write the way a good book chapter explains a system. Open with a short orientation that gives
-a cold reader just enough footing, then develop the subject in connected paragraphs that
-follow a concrete behavior through the code. Teach the idea before the specialized term for
-it. Explain mechanism and consequence together — what the code does, and what a caller or
-reader experiences because of it. Citations and excerpts support the explanation; they never
-replace it.
+Write for a senior developer reading cold. Give the reader a small behavior they can picture
+before introducing its implementation vocabulary. For example, begin with “a request that
+exceeds the profile limit returns the fallback,” then show which function selects the limit
+and what the caller sees; do not make the reader reconstruct that chain from headings or
+citations. Develop the subject in connected paragraphs that follow a concrete behavior
+through the code. Teach the idea before the specialized term for it. Explain mechanism and
+consequence together — what the code does, and what a caller or reader experiences because
+of it. Citations and excerpts support the explanation; they never replace it.
 
 Three questions decide what matters. Rank what you find by which one it answers:
 
@@ -101,6 +103,12 @@ deliberately not adjacent.
    touched and undone, all renames" is a sentence a reader can audit. Silence is
    indistinguishable from not having run it.
 
+   These checks belong to the research, not automatically to the opening of the explanation.
+   Keep routine pins, exact ranges, path counts, lease boundaries, and command output brief
+   and late unless one of them changes how a finding should be understood. Lead with the
+   behavior, consequence, and decision a reader needs; keep a material scope limit beside
+   the claim it qualifies.
+
 5. **Read the code, not the diffs.** Diffs show what moved; they hide what the moved code
    now does. Open the files.
 
@@ -132,8 +140,9 @@ deliberately not adjacent.
 9. **Hunt absences on purpose.** The strongest findings are things that are *not* there: no
    analytics call, no test for a path, no reader of a flag. Absence cannot be cited, so it
    must be searched for — and the search stated. See Claiming an absence.
-10. **Draft the explanation**, covering the concerns below — use them where they help the
-    reader, and do not force a section list.
+10. **Draft the explanation around the reader's question.** Use the concerns below as
+    prompts, not as a required inventory or sequence. Follow the subject's most useful
+    behavior and let its importance determine the headings.
 11. **`explorer check <doc.md>`** until it exits 0, then **check your own captions**, then
     **read the whole thing cold.** `check` proves the code is real and says nothing about the
     sentence beside it. A count you quote from a diff — lines added, lines removed, files
@@ -147,41 +156,23 @@ deliberately not adjacent.
 
 ## What the document is
 
-A recipe, not a template. The items below are concerns a reader may need covered — not a
-mandatory inventory, not required headings, and not a fixed order. Merge, split, or reorder
-them as the explanation needs, omit any with nothing in it, and use headings a reader
-understands (what the subject does, why it matters) rather than labels of your own process.
+A document is a reader's explanation, not a transcript of the investigation. Start with one or
+two sentences that give a cold reader enough context, then lead with the behavior and consequence
+that matter most. A small example often gives the reader footing before implementation vocabulary:
+“a timeout returns the profile's fallback” is more useful than an opening file inventory. Follow
+that behavior through the code in connected prose. Add a map, file link, or citation when it helps
+the reader take the next step, and explain the sentence beside each citation rather than making
+the excerpt carry the argument.
 
-1. **A lead that orients, then carries the findings.** First paragraph, before any structure.
-   One or two sentences of context so a cold reader can follow — what the system around this
-   change does — then the two or three things they must know, in plain sentences. If the
-   opening is *only* what the subject is, you have buried the lead; if it never orients at
-   all, you have buried the reader.
-2. **The layout.** Where the pieces live and how they relate. A list, if it is a list.
-3. **What to read.** For a changeset: `core` files with a one-line reason each, and the rest
-   named as a group. For a subsystem: the files *and the symbols inside them* that carry the
-   behaviour. Write each path as `` `<source-id> <path>` `` — the tool resolves and links it.
-
-   Putting a file in the support group is a claim that you opened it and it was ordinary.
-   It is not a bin for the files you did not read.
-4. **The design already on record.** A compressed account of the decisions the author
-   documented — in comments, docstrings, the PR body, a shipped runbook — attributed to
-   where they are written, and cited. This is real value: it is the abstract of the
-   changeset, and it tells a reader what to hold in mind before they open a file.
-
-   It is not a findings section. Say where each point comes from, so its weight is legible:
-   *the docstring names the race it closes*, not a bare assertion in your own voice.
-5. **The findings**: what the record does not state. Most important first, each one earning
-   its place with a citation. A point already made in a comment belongs in part 4; the
-   author's annotations map what they knew, and your value is what the map omits.
-6. **What the tests cover, and what they do not.** Name the specific untested scenarios.
-7. **What follows the existing pattern.** One sentence and one citation for the whole
-   category. Anything conventional gets named and dismissed, not toured.
-8. **What you could not determine.** Brief, specific, and honest about what would settle it.
-   Not a parking space for a question one more file would answer.
-
-**Order the whole document by importance, and let it taper** — journalism's inverted pyramid.
-When you need to cut, cut from the bottom.
+Attribute decisions already written in comments, docstrings, PR prose, or runbooks. Keep those
+decisions separate from findings about what the record omits. Rank findings by consequence,
+including choices and existing-but-unused implementations. Describe tests from their assertions,
+not their names, and say which relevant scenarios remain untested. Name an unknown only when the
+missing file, experiment, or owner decision that would settle it is clear. A support file must have
+been opened and found ordinary. Conventional patterns need only a sentence when they do not affect
+a decision. These are prompts for research, not headings to recite: use the headings and order that
+help this reader understand the subject, and let the explanation taper when the important work is
+done.
 
 ## Doctrine
 

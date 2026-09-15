@@ -110,10 +110,14 @@ gated CLI.
 across the final evidence set (navigator candidate v1, explorer candidate v2), with zero
 fabricated claims in any output; every novel factual claim was checked against the fixture
 bytes or the pinned SHA. The baselines passed 88 of 89, the one failure being audit-first
-ordering in baseline E-PR — recorded for comparison, not as a blocker. Two disclosed
-deviations: three runs read the pinned `package.json` beyond the prompt-enumerated list
-(dispatcher-permitted, read-only at the pinned SHA, disclosed; recorded in the session
-workspace).
+ordering in baseline E-PR — recorded for comparison, not as a blocker. Three runs read the
+pinned `package.json` beyond the prompt-enumerated list. The baseline N-HTML prompt did not
+explicitly authorize that read. The revised E-HTML and revised N-HTML dispatches explicitly
+allowed reading the pinned file despite its omission from the frozen prompts. The later
+E-HTML v2 dispatch also gave that permission, but the retained record must not be read as
+proof that the v2 subject actually opened `package.json`. These authorization distinctions
+supersede the shorthand in the earlier summary; the historical results and disclosures are
+preserved.
 
 **Machine checks.** `polytoken validate skill` exited 0 for both files; the focused smoke
 (parse/cli/render, 94 tests) and the full aggregate (`npm run verify`: type-check, 152
@@ -138,3 +142,28 @@ key and produced an answer that had to be discarded.
 Compare against the key, then verify each novel claim in the output. The tool
 guarantees the code is real and says nothing about the prose beside it, so
 checking captions is the part that cannot be skipped.
+
+## READABILITY-001: prose-pass correction and evidence boundary
+
+This entry corrects the historical record without replacing it. The retained `89/89`
+figure is the result of independent factual grading of applicable skill clauses. It is
+not a test count, a renderer-repair result, a readability measurement, or evidence that a
+human accepted the voice. Likewise, the recorded test totals describe the tool and the
+exercise runs; they do not establish that either narrative is clear or pleasant to read.
+
+The earlier blanket authorization wording is superseded by the more precise record above.
+The baseline N-HTML prompt did not explicitly authorize its `package.json` read. The
+revised E-HTML and revised N-HTML dispatches explicitly allowed reading the pinned file,
+even though the frozen prompts omitted it. The E-HTML v2 dispatch also gave that
+permission, but permission alone is not evidence that the v2 subject actually read the
+file. These distinctions correct the old summary without changing its historical results
+or the disclosed output records.
+
+The prose-pass copies under the session workspace are author-edited demonstrations. They
+preserve the explorer subject's test-only scope and the navigator subject's parse/CLI/render
+and test evidence at `f974ba10`, but they are not blind paired reruns and provide no new
+independent behavioral evidence. A successful `check` establishes only that this Markdown
+parsed and its source references resolved; it does not render HTML. A successful `render`
+performs that acceptance and then generates HTML. Neither command establishes visual
+correctness, good prose, renderer quality beyond the command's checks, or human acceptance.
+An independent reviewer and the operator must still assess the copies directly.
