@@ -238,10 +238,10 @@ function makeMarkdown(
   marked.use({
     renderer: {
       codespan({ text }) {
-        // `text` is entity-encoded by marked; references never contain markup,
-        // so a plain lookup on the raw span is enough.
+        // Marked passes the codespan text through as authored, so look up
+        // references before escaping the unlinked text for HTML.
         const reference = references.get(text);
-        return reference ? referenceLink(reference) : `<code>${text}</code>`;
+        return reference ? referenceLink(reference) : `<code>${escapeHtml(text)}</code>`;
       },
       code({ text, lang }) {
         const highlighted = highlighter.codeToHtml(text, {

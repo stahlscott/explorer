@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { MODES } from '../../src/styles/skins.ts';
@@ -596,4 +597,31 @@ test('highlights the last section once the reader reaches the bottom', async ({ 
   // enough document beneath it to scroll that far.
   const last = page.locator('.toc a').last();
   await expect(last).toHaveAttribute('aria-current', 'true');
+});
+
+test('keeps literal tags and entities in prose code without adding artifact elements', async ({ page }) => {
+  const single = buildSingleSourceCorpus();
+  const doc = readFileSync(single.doc, 'utf8');
+  const sha = doc.match(/sha: ([0-9a-f]{40})/)![1]!;
+  writeFileSync(
+    single.doc,
+    `${doc}\n\nLiteral tags remain in \`<nav class="toc">\`, \`</nav>\`, ` +
+      '\`<figure class="cite">\`, and \`</figure>\`.\n\n' +
+      'Ampersands remain \`a & b\` and \`&lt;already&gt;\`.\n\n' +
+      'See \`src/features/statements/useStatement.ts\` as a checked reference.\n',
+  );
+  const artifact = render(single.doc);
+  await page.goto(pathToFileURL(artifact).href);
+
+  await expect(page.locator('main')).toContainText(
+    'Literal tags remain in <nav class="toc">, </nav>, <figure class="cite">, and </figure>.',
+  );
+  await expect(page.locator('main')).toContainText('Ampersands remain a & b and &lt;already&gt;.');
+  await expect(page.locator('.toc')).toHaveCount(1);
+  await expect(page.locator('figure.cite')).toHaveCount(single.citations);
+  await expect(page.locator('.file-ref')).toHaveCount(1);
+  await expect(page.locator('.file-ref')).toHaveAttribute(
+    'href',
+    `https://github.com/acme/web/blob/${sha}/src/features/statements/useStatement.ts`,
+  );
 });

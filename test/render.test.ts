@@ -691,6 +691,36 @@ ${body}`;
     expect(body).not.toContain('file-ref');
   });
 
+  it('escapes literal markup in prose code while preserving references and entities', async () => {
+    const repo = makeRepo(TREE);
+    const out = await render(
+      docFor(
+        repo.path,
+        [
+          'Paragraph keeps `<nav class="toc">` and `</nav>`, plus `<figure class="cite">` and `</figure>`.',
+          'It also keeps `a & b` and the entity-like `&lt;already&gt;` text.',
+          'Read `web docs/notes.md` as a checked reference.',
+        ].join('\n\n'),
+      ),
+    );
+
+    const body = out.slice(out.indexOf('<main>'));
+    expect(body).toContain(
+      '<p>Paragraph keeps <code>&lt;nav class=&quot;toc&quot;&gt;</code> and ' +
+        '<code>&lt;/nav&gt;</code>, plus <code>&lt;figure class=&quot;cite&quot;&gt;</code> and ' +
+        '<code>&lt;/figure&gt;</code>.</p>',
+    );
+    expect(body).toContain(
+      '<p>It also keeps <code>a &amp; b</code> and the entity-like ' +
+        '<code>&amp;lt;already&amp;gt;</code> text.</p>',
+    );
+    expect(out).toContain(
+      `href="https://github.com/acme/web/blob/${repo.sha}/docs/notes.md"`,
+    );
+    expect(out.match(/<nav class="toc"/g) ?? []).toHaveLength(0);
+    expect(out.match(/<figure class="cite"/g) ?? []).toHaveLength(0);
+  });
+
   it('links every row of a file table', async () => {
     const repo = makeRepo(TREE);
     const out = await render(
