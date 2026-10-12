@@ -54,7 +54,7 @@ Order matters. Steps 2 to 4 come before any depth-first reading, and steps 5 and
 deliberately not adjacent.
 
 1. **Pin the sources, then run `explorer pin`.** For each repo, find the ref that holds the
-   work: `git log --oneline master..<branch>` maps branches to tickets, and
+   work: `git log --oneline <base>..<branch>` maps branches to tickets, and
    `git worktree list` finds a stacked branch checked out elsewhere. Write the front matter,
    then pin it **before** you read anything. A branch name is not a pin — see Drift.
 
@@ -64,8 +64,8 @@ deliberately not adjacent.
    fork=$(git merge-base <base> <sha>)
    ```
 
-   `git diff master..<sha>` is not the changeset. `master` has moved since the branch left
-   it, and every commit it gained comes back inverted: master's additions read as this
+   `git diff <base>..<sha>` is not the changeset. The base branch has moved since the branch
+   left it, and every commit it gained comes back inverted: the base's additions read as this
    changeset's deletions. On a real subject that turned a 37-line addition into "37 added,
    452 deleted" and produced a confident, entirely false finding about unrelated code being
    removed. `base:` names a branch, and a branch is not a point — the same lesson as Drift,
@@ -249,8 +249,8 @@ caught by searching rather than re-reading.
 code that consumes what is missing. "The name is not in the registry" is where the search ends
 and the finding starts — open whatever reads that registry, find the branch that decides what
 happens to a name it does not know, and report the consequence. One more file usually turns
-*could not determine* into a finding, and a question that one file would settle does not belong in
-part 8.
+*could not determine* into a finding, and a question that one file would settle does not belong
+among the document's open questions.
 
 ## Red flags
 
@@ -265,7 +265,7 @@ part 8.
 | Pad to a fixed shape or length | Cover what changes a decision; let the document taper |
 | Repin a drifted document to make `check` pass | Re-read the citations first; `check` was right |
 | Call a file support without opening it | Open it; outside the feature's directories it is a finding until it isn't |
-| Diff against `master` because `base:` says so | Diff against the merge-base; master has moved since the fork |
+| Diff against the base branch because `base:` says so | Diff against the merge-base; the base branch has moved since the fork |
 | Report a line count you read once and did not re-run | It is a claim like any other; verify it before shipping it |
 | Come back from an out-of-feature file with a finding it will not support | Ordinary is a valid answer. The step says look, not deliver |
 | Treat the diff as the list of what changed | Reconcile it against the commit list; a merge can undo a commit |
